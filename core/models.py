@@ -6,40 +6,64 @@ STATUS = [
     ('Besluit', 'Besluit'),
 ]
 
-SOORT = [
-    ("Amendement", "Amendement"),
-    ("Begroting", "Begroting"),
-    ("Brief commissie", "Brief commissie"),
-    ("Brief Kamer", "Brief Kamer"),
-    ("Brief regering", "Brief regering"),
-    ("Brief van lid/fractie/commissie", "Brief van lid/fractie/commissie"),
-    ("Initiatiefwetgeving", "Initiatiefwetgeving"),
-    ("Interpellatie", "Interpellatie"),
-    ("Mondelinge vragen", "Mondelinge vragen"),
-    ("Motie", "Motie"),
-    ("Overig", "Overig"),
-    ("Rapport/brief Algemene Rekenkamer", "Rapport/brief Algemene Rekenkamer"),
-    ("Rondvraagpunt procedurevergadering", "Rondvraagpunt procedurevergadering"),
-    ("Schriftelijke vragen", "Schriftelijke vragen"),
-    ("Verdrag", "Verdrag"),
-    ("Verzoek bij regeling van werkzaamheden", "Verzoek bij regeling van werkzaamheden"),
-    ("Verzoekschrift", "Verzoekschrift"),
-    ("Voordrachten en benoemingen", "Voordrachten en benoemingen"),
-    ("Wetgeving", "Wetgeving"),
-]
-
 KAMER = [
     ('Eerste Kamer en Tweede Kamer', 'Eerste Kamer en Tweede Kamer'),
     ('Tweede Kamer', 'Tweede Kamer'),
+    ('Verenigde Vergadering', 'Verenigde Vergadering'),
 ]
 
 
 class Activiteit(models.Model):
+    SOORT = [
+        ("Aanbieding", "Aanbieding"),
+        ("Afscheid", "Afscheid"),
+        ("Algemeen overleg", "Algemeen overleg"),
+        ("Beëdiging", "Beëdiging"),
+        ("Begrotingsoverleg", "Begrotingsoverleg"),
+        ("Bijzondere procedure", "Bijzondere procedure"),
+        ("Constituerende vergadering", "Constituerende vergadering"),
+        ("Gesprek", "Gesprek"),
+        ("Hamerstukken", "Hamerstukken"),
+        ("Herdenking", "Herdenking"),
+        ("Hoorzitting / rondetafelgesprek", "Hoorzitting / rondetafelgesprek"),
+        ("Inbreng feitelijke vragen", "Inbreng feitelijke vragen"),
+        ("Inbreng schriftelijk overleg", "Inbreng schriftelijk overleg"),
+        ("Inbreng verslag (wetsvoorstel)", "Inbreng verslag (wetsvoorstel)"),
+        ("Interpellatiedebat", "Interpellatiedebat"),
+        ("Notaoverleg", "Notaoverleg"),
+        ("Petitie", "Petitie"),
+        ("Plenair debat", "Plenair debat"),
+        ("Procedurevergadering", "Procedurevergadering"),
+        ("Regeling van werkzaamheden", "Regeling van werkzaamheden"),
+        ("Schriftelijk commentaar algemeen", "Schriftelijk commentaar algemeen"),
+        ("Schriftelijk commentaar gericht", "Schriftelijk commentaar gericht"),
+        ("Stemmingen", "Stemmingen"),
+        ("Technische briefing", "Technische briefing"),
+        ("Verklaring", "Verklaring"),
+        ("Vragenuur", "Vragenuur"),
+        ("Werkbezoek", "Werkbezoek"),
+        ("Wetgevingsoverleg ", "Wetgevingsoverleg "),
+    ]
+
+    STATUS = [
+        ("Geannuleerd", "Geannuleerd"),
+        ("Gepland", "Gepland"),
+        ("Uitgevoerd", "Uitgevoerd"),
+        ("Verplaatst", "Verplaatst"),
+    ]
+
+    DATUMSOORT = [
+        ("Dag", "Dag"),
+        ("Meerdaags", "Meerdaags"),
+        ("Nog geen datum bekend", "Nog geen datum bekend"),
+        ("Weeknummer", "Weeknummer"),
+    ]
+
     id = models.CharField(max_length=114, primary_key=True)
     nummer = models.CharField(max_length=10)
     onderwerp = models.TextField()
     soort = models.CharField(max_length=50, choices=SOORT)
-    datumsoort = models.CharField(max_length=50)
+    datumsoort = models.CharField(max_length=50, choices=DATUMSOORT)
     datum = models.DateTimeField(null=True, blank=True)  # Niet in tsv
     aanvangstijd = models.DateTimeField(null=True, blank=True)
     eindtijd = models.DateTimeField(null=True, blank=True)
@@ -49,8 +73,8 @@ class Activiteit(models.Model):
     vergaderjaar = models.CharField(max_length=9, null=True, blank=True)
     kamer = models.CharField(max_length=30, choices=KAMER)
     noot = models.TextField(null=True, blank=True)
-    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=True)
-    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=True)
+    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
+    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
     vrsnummer = models.IntegerField(blank=True, null=True)
     voortouwnaam = models.CharField(max_length=150, blank=True)
     voortouwafkorting = models.CharField(max_length=7, blank=True)
@@ -79,8 +103,8 @@ class Agendapunt(models.Model):
     rubriek = models.CharField(max_length=200, null=True, blank=True)
     noot = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS)
-    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=True)
-    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=True)
+    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
+    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
     besluiten = models.ManyToManyField('Besluit')
     documenten = models.ManyToManyField('Document')
 
@@ -105,8 +129,8 @@ class Besluit(models.Model):
     stemmingssoort = models.CharField(max_length=20, null=True, blank=True, choices=STEMMINGSSOORT)
     voorsteltext = models.TextField(null=True, blank=True)
     besluittext = models.TextField()
-    aangemaaktop = models.DateTimeField(auto_now_add=True)
-    gewijzigdop = models.DateTimeField(auto_now=True)
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
     opmerking = models.TextField(null=True, blank=True)
 
     zaken = models.ManyToManyField('Zaak', through='Status')
@@ -130,8 +154,8 @@ class Kamerstukdossier(models.Model):
     hoogstevolgnummer = models.IntegerField(null=True, blank=True)
     afgesloten = models.IntegerField(null=True, blank=True)
     kamer = models.CharField(max_length=50, null=True, blank=True)
-    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=True)
-    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=True)
+    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
+    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
 
     def __unicode__(self):
         if not self.titel:
@@ -141,7 +165,7 @@ class Kamerstukdossier(models.Model):
 
 class Document(models.Model):
     KAMER = [
-        ('2', '2'),
+        ('2', '2 Tweede Kamer?'),
         ('3', '3'),
         ('4', '4'),
     ]
@@ -156,15 +180,15 @@ class Document(models.Model):
     volgnummer = models.IntegerField(null=True, blank=True)
     vergaderjaar = models.CharField(max_length=10)
     kamer = models.IntegerField(choices=KAMER)
-    aangemaaktop = models.DateTimeField(auto_now_add=True)
-    gewijzigdop = models.DateTimeField(auto_now=True)
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
     citeertitel = models.CharField(max_length=400, null=True, blank=True)
     alias = models.CharField(max_length=400, null=True, blank=True)
     datumregistratie = models.DateTimeField(null=True, blank=True)
     datumontvangst = models.DateTimeField(null=True, blank=True)
     aanhangselnummer = models.IntegerField(null=True, blank=True)
     kenmerkafzender = models.CharField(max_length=20, null=True, blank=True)
-    contenttype = models.CharField(max_length=20, null=True, blank=True)
+    contenttype = models.CharField(max_length=30, null=True, blank=True)
 
     bijlagen = models.ManyToManyField('self', symmetrical=False, related_name="bijlage_van")
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
@@ -238,6 +262,37 @@ class Reservering(models.Model):
 
 
 class Zaak(models.Model):
+    SOORT = [
+        ("Amendement", "Amendement"),
+        ("Begroting", "Begroting"),
+        ("Brief commissie", "Brief commissie"),
+        ("Brief Kamer", "Brief Kamer"),
+        ("Brief regering", "Brief regering"),
+        ("Brief van lid/fractie/commissie", "Brief van lid/fractie/commissie"),
+        ("EU-voorstel", "EU-voorstel"),
+        ("Initiatiefnota", "Initiatiefnota"),
+        ("Initiatiefwetgeving", "Initiatiefwetgeving"),
+        ("Interpellatie", "Interpellatie"),
+        ("Mondelinge vragen", "Mondelinge vragen"),
+        ("Motie", "Motie"),
+        ("Nationale ombudsman", "Nationale ombudsman"),
+        ("Nota naar aanleiding van het (nader) verslag", "Nota naar aanleiding van het (nader) verslag"),
+        ("Nota van wijziging", "Nota van wijziging"),
+        ("Overig", "Overig"),
+        ("Parlementair onderzoeksrapport", "Parlementair onderzoeksrapport"),
+        ("PKB/Structuurvisie", "PKB/Structuurvisie"),
+        ("Rapport/brief Algemene Rekenkamer", "Rapport/brief Algemene Rekenkamer"),
+        ("Rondvraagpunt procedurevergadering", "Rondvraagpunt procedurevergadering"),
+        ("Schriftelijke vragen", "Schriftelijke vragen"),
+        ("Verdrag", "Verdrag"),
+        ("Verzoek bij regeling van werkzaamheden", "Verzoek bij regeling van werkzaamheden"),
+        ("Verzoekschrift", "Verzoekschrift"),
+        ("Voordrachten en benoemingen", "Voordrachten en benoemingen"),
+        ("Wetgeving", "Wetgeving"),
+        ("Wijziging RvO", "Wijziging RvO"),
+        ("Wijzigingen voorgesteld door de regering", "Wijzigingen voorgesteld door de regering"),
+    ]
+
     id = models.CharField(max_length=114, primary_key=True)
     nummer = models.CharField(max_length=10)
     soort = models.CharField(max_length=50, choices=SOORT)
@@ -255,9 +310,9 @@ class Zaak(models.Model):
     volgnummer = models.IntegerField()
     huidigebehandelstatus = models.CharField(max_length=1, null=True, blank=True)
     afgedaan = models.BooleanField()
-    grootproject = models.BooleanField()
-    aangemaaktop = models.DateTimeField(auto_now_add=True)
-    gewijzigdop = models.DateTimeField(auto_now=True)
+    grootproject = models.NullBooleanField()
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
 
     zieook = models.ManyToManyField('self')
     overig = models.ManyToManyField('self')  # symmetrisch?
@@ -286,8 +341,8 @@ class Status(models.Model):
     besluit = models.ForeignKey(Besluit, related_name='status2', null=True, blank=True)
     soort = models.TextField(null=True, blank=True)
     datum = models.DateTimeField()
-    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=True)
-    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=True)
+    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
+    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
 
     def __unicode__(self):
         return self.soort
@@ -305,8 +360,8 @@ class Stemming(models.Model):
     actornaam = models.CharField(max_length=50, blank=True)
     actorpartij = models.CharField(max_length=50, blank=True)
     vergissing = models.IntegerField(null=True, blank=True)
-    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=True)
-    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=True)
+    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
+    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
     sid_actorlid = models.CharField(max_length=70, null=True, blank=True)
     sid_actorfractie = models.CharField(max_length=70, blank=True)
 
