@@ -36,12 +36,7 @@ class TsvImport(object):
 
             reader = csv.DictReader(self.getData(IN), dialect=csv.excel_tab, restkey='rest')
 
-            i = 0
             for row in reader:
-                i += 1
-                if i > 1000:
-                    break
-
                 if 'rest' in row:
                     print row['rest']
                 self.handle(row)
