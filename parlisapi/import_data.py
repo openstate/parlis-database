@@ -4,17 +4,18 @@ import re
 
 from dateutil import parser
 
-from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming
+from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier
 
 
 def tsv_import(folder):
-    Zaken(folder).execute()
-    Activiteiten(folder).execute()
-    Besluiten(folder).execute()
-    Documenten(folder).execute()
+    #Zaken(folder).execute()
+    #Activiteiten(folder).execute()
+    #Besluiten(folder).execute()
+    #Documenten(folder).execute()
 
     #Agendapunten(folder).execute()
     #Stemmingen(folder).execute()
+    ZakenRelatieKamerstukDossier(folder).execute()
 
 
 class TsvImport(object):
@@ -64,18 +65,13 @@ class TsvImport(object):
             if value == 'true':
                 row[key] = True
             if TIMESTAMP.search(value):
-                try:
-                    row[key] = parser.parse(value + ' CET')
-                except:
-                    raise
-                    pass
+                row[key] = parser.parse(value + ' CET')
 
         if self.primary_key:
             try:
                 instance, created = self.model.objects.get_or_create(id=row[self.primary_key], defaults=row)
             except:
                 print row
-                raise
             else:
                 if not created and False:
                     d = DictDiffer(self.model.objects.filter(id=instance.id).values()[0], row)
@@ -89,6 +85,7 @@ class TsvImport(object):
                 setattr(instance, key, row[key])
 
             instance.save()
+        return instance
 
 
 class Zaken(TsvImport):
@@ -105,6 +102,11 @@ class Agendapunten(TsvImport):
     filename = 'Agendapunten.tsv'
     model = Agendapunt
 
+    def handle(self, row):
+        row['activiteit_id'] = row['sid_activiteit']
+        del row['sid_activiteit']
+        super(Agendapunten, self).handle(row)
+
 
 class Besluiten(TsvImport):
     filename = 'Besluiten.tsv'
@@ -115,11 +117,43 @@ class Stemmingen(TsvImport):
     filename = 'Stemmingen.tsv'
     model = Stemming
 
+    def handle(self, row):
+        row['besluit_id'] = row['sid_besluit']
+        del row['sid_besluit']
+        super(Stemmingen, self).handle(row)
+
 
 class Documenten(TsvImport):
     filename = 'Documenten.tsv'
     model = Document
 
+    def handle(self, row):
+        row['aanhangselnummer'] = row['aanhangelnummer']
+        del row['aanhangelnummer']
+        super(Documenten, self).handle(row)
+
+
+class ZakenRelatieKamerstukDossier(TsvImport):
+    filename = 'KamerstukDossier.tsv'
+    model = Kamerstukdossier
+    key = 'kamerstukdossier'
+
+    def __init__(self, folder, filename=False):
+        super(ZakenRelatieKamerstukDossier, self).__init__(os.path.join(folder, 'Zaken'), filename)
+
+    def handle(self, row):
+        zaak_id = row['sid_zaak']
+        del row['sid_zaak']
+
+        instance = super(ZakenRelatieKamerstukDossier, self).handle(row)
+
+        try:
+            zaak = Zaak.objects.get(id=zaak_id)
+        except:
+            print "Missing zaak: %s" % zaak_id
+        else:
+            setattr(zaak, self.key, instance)
+            zaak.save()
 
 
 """

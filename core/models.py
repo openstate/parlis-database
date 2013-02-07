@@ -3,7 +3,6 @@ from django.db import models
 
 STATUS = [
     ('Vrijgegeven', 'Vrijgegeven'),
-    ('Besluit', 'Besluit'),
 ]
 
 KAMER = [
@@ -121,6 +120,10 @@ class Besluit(models.Model):
         ("Met handopsteken", "Met handopsteken"),
         ("StemmingsSoort", "StemmingsSoort"),
         ("Zonder stemming", "Zonder stemming"),
+    ]
+
+    STATUS = [
+        ('Besluit', 'Besluit'),
     ]
 
     id = models.CharField(max_length=114, primary_key=True)
@@ -352,14 +355,20 @@ class Status(models.Model):
 
 
 class Stemming(models.Model):
+    SOORT = [
+        ("Niet deelgenomen", "Niet deelgenomen"),
+        ("Tegen", "Tegen"),
+        ("Voor", "Voor"),
+    ]
+
     id = models.CharField(max_length=114, primary_key=True)
     besluit = models.ForeignKey('Besluit')
-    soort = models.TextField(blank=True)
+    soort = models.TextField(choices=SOORT)
     fractiegrootte = models.IntegerField(null=True, blank=True)
     fractiestemmen = models.IntegerField(null=True, blank=True)
     actornaam = models.CharField(max_length=50, blank=True)
     actorpartij = models.CharField(max_length=50, blank=True)
-    vergissing = models.IntegerField(null=True, blank=True)
+    vergissing = models.NullBooleanField()
     aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
     gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
     sid_actorlid = models.CharField(max_length=70, null=True, blank=True)
