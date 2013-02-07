@@ -82,6 +82,13 @@ class TsvImport(object):
                     print "Added:", d.added()
                     print "Removed:", d.removed()
                     print "Changed values:", map(lambda x: {x: (row[x], getattr(instance, x))}, d.changed())
+        else:
+            instance = self.model()
+
+            for key in row:
+                setattr(instance, key, row[key])
+
+            instance.save()
 
 
 class Zaken(TsvImport):

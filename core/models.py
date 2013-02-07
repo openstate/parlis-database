@@ -124,11 +124,11 @@ class Besluit(models.Model):
     ]
 
     id = models.CharField(max_length=114, primary_key=True)
-    soort = models.CharField(max_length=765)
+    soort = models.CharField(max_length=765, null=True)
     status = models.CharField(max_length=20, choices=STATUS)
     stemmingssoort = models.CharField(max_length=20, null=True, blank=True, choices=STEMMINGSSOORT)
     voorsteltext = models.TextField(null=True, blank=True)
-    besluittext = models.TextField()
+    besluittext = models.TextField(null=True)
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
     opmerking = models.TextField(null=True, blank=True)
