@@ -2,9 +2,7 @@ import os
 
 import dj_database_url
 
-from django.conf import global_settings
-
-PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))+'/'
+PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../')) + '/'
 
 
 # Django settings for kamerdatatracker project.
@@ -23,8 +21,8 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-    'default': dj_database_url.config(default='sqlite:///'+ PROJECT_DIR +'database.sqlite3'),
-    'accessdb': dj_database_url.config(env='ACCESS_DATABASE_URL', default='sqlite:///'+ PROJECT_DIR +'database.sqlite3'),
+    'default': dj_database_url.config(default='sqlite:///%sdatabase.sqlite3' % PROJECT_DIR),
+    'accessdb': dj_database_url.config(env='ACCESS_DATABASE_URL', default='sqlite:///%sdatabase.sqlite3' % PROJECT_DIR),
 }
 
 # Local time zone for this installation. Choices can be found here:
@@ -122,12 +120,12 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Uncomment the next line to enable the admin:
-    # 'django.contrib.admin',
-    # Uncomment the next line to enable admin documentation:
-    # 'django.contrib.admindocs',
     'parlisapi',
     'core',
+    # Uncomment the next line to enable the admin:
+    'django.contrib.admin',
+    # Uncomment the next line to enable admin documentation:
+    'django.contrib.admindocs',
 )
 
 # A sample logging configuration. The only tangible logging

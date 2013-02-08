@@ -264,6 +264,27 @@ class Reservering(models.Model):
         return "Reservering voor zaal", self.zaal
 
 
+class Actor(models.Model):
+    RELATIE = [
+        ("Rapporteur", "Rapporteur"),
+        ("Gericht aan", "Gericht aan"),
+        ("Medeindiener", "Medeindiener"),
+        ("Volgcommissie", "Volgcommissie"),
+        ("Voortouwcommissie", "Voortouwcommissie"),
+        ("Relatie", "Relatie"),
+        ("Indiener", "Indiener"),
+    ]
+
+    id = models.CharField(max_length=114, primary_key=True)
+    naam = models.CharField(max_length=150)
+    functie = models.CharField(max_length=150, null=True)
+    partij = models.CharField(max_length=50, null=True)
+    relatie = models.CharField(max_length=50, choices=RELATIE)
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
+    actorabreviatedname = models.CharField(max_length=50, null=True)
+
+
 class Zaak(models.Model):
     SOORT = [
         ("Amendement", "Amendement"),
@@ -322,6 +343,8 @@ class Zaak(models.Model):
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
     besluiten = models.ManyToManyField(Besluit)
     activiteiten = models.ManyToManyField(Activiteit)
+    documenten = models.ManyToManyField(Document)  # , through=ZaakDocumenten <<nog niet nodig
+    actoren = models.ManyToManyField(Actor)
 
     def __unicode__(self):
         return self.onderwerp
@@ -330,12 +353,14 @@ class Zaak(models.Model):
         verbose_name_plural = u"Zaken"
 
 
-class Zaakbesluitrelaties(models.Model):
-    zaak = models.ForeignKey('Zaak')  # Field name made lowercase.
-    besluit = models.ForeignKey('Besluit')  # Field name made lowercase.
+class ZaakDocumenten(models.Model):
+    '''Nog niet nodig omdat startdocument nog niet gevuld wordt'''
+    zaak = models.ForeignKey(Zaak)
+    document = models.ForeignKey(Document)
+    startdocument = models.IntegerField(null=True, blank=True)  # mist in tsv
 
     class Meta:
-        db_table = u'accessdb_zaak_besluiten'
+        db_table = u'core_zaak_documenten'
 
 
 class Status(models.Model):

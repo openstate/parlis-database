@@ -224,6 +224,13 @@ class ZakenBesluiten(ZakenRelatie):
     many_to_many = True
 
 
+class ZakenDocumenten(ZakenRelatie):
+    filename = 'Documenten.tsv'
+    model = Document
+    key = 'documenten'
+    many_to_many = True
+
+
 """
 A dictionary difference calculator
 Originally posted as:
