@@ -6,7 +6,7 @@ from pprint import pprint
 
 from dateutil import parser
 
-from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier
+from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier, Status
 
 
 def tsv_import(folder):
@@ -20,6 +20,8 @@ def tsv_import(folder):
     #ZakenRelatieKamerstukDossier(folder).execute()
     ZakenActiviteiten(folder).execute()
     ZakenBesluiten(folder).execute()
+    ZakenDocumenten(folder).execute()
+    ZakenStatussen(folder).execute()
 
 
 class TsvImport(object):
@@ -229,6 +231,16 @@ class ZakenDocumenten(ZakenRelatie):
     model = Document
     key = 'documenten'
     many_to_many = True
+
+
+class ZakenStatussen(TsvImport):
+    filename = os.path.join('Zaken', 'Stemmingen.tsv')
+    model = Status
+
+    def handle(self, row):
+        row['zaak_id'] = row['sid_zaak']
+        del row['sid_zaak']
+        super(Stemmingen, self).handle(row)
 
 
 """

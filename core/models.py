@@ -364,13 +364,57 @@ class ZaakDocumenten(models.Model):
 
 
 class Status(models.Model):
+    SOORT = [
+		("Aangenomen", "Aangenomen"),
+		("Aangehouden", "Aangehouden"),
+		("Goedgekeurd", "Goedgekeurd"),
+		("Ingetrokken", "Ingetrokken"),
+		("Overgenomen", "Overgenomen"),
+		("Controversieel", "Controversieel"),
+		("Komt in gesprek", "Komt in gesprek"),
+		("Decharge verleend", "Decharge verleend"),
+		("Komt in stemmingen", "Komt in stemmingen"),
+		("Komt in werkbezoek", "Komt in werkbezoek"),
+		("Afgedaan door Kamer", "Afgedaan door Kamer"),
+		("Komt in notaoverleg", "Komt in notaoverleg"),
+		("Geschorst / verdaagd", "Geschorst / verdaagd"),
+		("Komt in plenair debat", "Komt in plenair debat"),
+		("Extern advies gevraagd", "Extern advies gevraagd"),
+		("Stenogram doorgezonden", "Stenogram doorgezonden"),
+		("Afgedaan door commissie", "Afgedaan door commissie"),
+		("Komt in algemeen overleg", "Komt in algemeen overleg"),
+		("Komt in begrotingsoverleg", "Komt in begrotingsoverleg"),
+		("Komt in wetgevingsoverleg", "Komt in wetgevingsoverleg"),
+		("Niet (meer) controversieel", "Niet (meer) controversieel"),
+		("Zonder stemming aangenomen", "Zonder stemming aangenomen"),
+		("Komt in technische briefing", "Komt in technische briefing"),
+		("Komt in procedurevergadering", "Komt in procedurevergadering"),
+		("Voor kennisgeving aangenomen", "Voor kennisgeving aangenomen"),
+		("Commissiebrief nog niet beantwoord", "Commissiebrief nog niet beantwoord"),
+		("Komt in regeling van werkzaamheden", "Komt in regeling van werkzaamheden"),
+		("Aangemeld voor plenaire behandeling", "Aangemeld voor plenaire behandeling"),
+		("Wordt gerelateerd aan plenair debat", "Wordt gerelateerd aan plenair debat"),
+		("Komt in hoorzitting/rondetafelgesprek", "Komt in hoorzitting/rondetafelgesprek"),
+		("Afgevoerd van de stand der werkzaamheden", "Afgevoerd van de stand der werkzaamheden"),
+		("Wordt gerelateerd aan commissieactiviteit", "Wordt gerelateerd aan commissieactiviteit"),
+		("Proces afgebroken: relateren met andere zaak", "Proces afgebroken: relateren met andere zaak"),
+		("Niet controversieel verklaard door de commissie", "Niet controversieel verklaard door de commissie"),
+		("Besloten overeenkomstig het voorstel van de commissie", "Besloten overeenkomstig het voorstel van de commissie"),
+		("Voorstel aan Kamer gedaan om controversieel te verklaren", "Voorstel aan Kamer gedaan om controversieel te verklaren"),
+		("Voorstel aan Kamer gedaan tot aanwijzing als groot project", "Voorstel aan Kamer gedaan tot aanwijzing als groot project"),
+		("Soort", "Soort"),
+		("Voorstel aan de Kamer gedaan tot beëindiging als groot project", "Voorstel aan de Kamer gedaan tot beëindiging als groot project"),
+		("Vervallen", "Vervallen"),
+		("Verworpen", "Verworpen"),
+    ]
+
     id = models.CharField(max_length=114, primary_key=True)
     zaak = models.ForeignKey(Zaak, related_name="status2")
-    besluit = models.ForeignKey(Besluit, related_name='status2', null=True, blank=True)
-    soort = models.TextField(null=True, blank=True)
+    besluit = models.ForeignKey(Besluit, related_name='status2', null=True, blank=True)  # niet in tsv
+    soort = models.CharField(max_length=100)
     datum = models.DateTimeField()
-    aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
-    gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
 
     def __unicode__(self):
         return self.soort
