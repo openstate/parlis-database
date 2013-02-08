@@ -2,6 +2,8 @@ import csv
 import os
 import re
 
+from pprint import pprint
+
 from dateutil import parser
 
 from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier
@@ -16,7 +18,8 @@ def tsv_import(folder):
     #Agendapunten(folder).execute()
     #Stemmingen(folder).execute()
     #ZakenRelatieKamerstukDossier(folder).execute()
-    ZakenRelatieActiviteiten(folder).execute()
+    ZakenActiviteiten(folder).execute()
+    ZakenBesluiten(folder).execute()
 
 
 class TsvImport(object):
@@ -71,7 +74,8 @@ class TsvImport(object):
         if self.primary_key:
             try:
                 instance, created = self.model.objects.get_or_create(id=row[self.primary_key], defaults=row)
-            except:
+            except Exception as e:
+                print e
                 print row
             else:
                 if not created:
@@ -87,8 +91,10 @@ class TsvImport(object):
                         # Do some conversions explicit to reduce false positives
                         same = False
 
+                        same = value == 'datum'
+
                         try:
-                            same = row[value].strip() == getattr(instance, value)
+                            same = re.sub(r'\s+', ' ', row[value].strip()) == re.sub(r'\s+', ' ', getattr(instance, value))
                         except:
                             pass
 
@@ -103,12 +109,18 @@ class TsvImport(object):
                         except:
                             pass
 
+                        try:
+                            same = getattr(instance, value).replace(microseconds=0) == row[value].replace(microseconds=0)
+                        except:
+                            pass
+
                         if not same:
                             return {value: (row[value], getattr(instance, value))}
                     list = [x for x in map(make_list_value, d.changed()) if x]
 
                     if list:
-                        print "Changed values:", list
+                        print "Changed values:"
+                        pprint(list)
         else:
             instance = self.model()
 
@@ -198,10 +210,17 @@ class ZakenRelatieKamerstukDossier(ZakenRelatie):
     many_to_many = False
 
 
-class ZakenRelatieActiviteiten(ZakenRelatie):
+class ZakenActiviteiten(ZakenRelatie):
     filename = 'Activiteiten.tsv'
     model = Activiteit
     key = 'activiteiten'
+    many_to_many = True
+
+
+class ZakenBesluiten(ZakenRelatie):
+    filename = 'Besluiten.tsv'
+    model = Besluit
+    key = 'besluiten'
     many_to_many = True
 
 
