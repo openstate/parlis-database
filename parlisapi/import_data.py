@@ -18,16 +18,18 @@ def tsv_import(folder):
     #Agendapunten(folder).execute()
     #Stemmingen(folder).execute()
     #ZakenRelatieKamerstukDossier(folder).execute()
-    ZakenActiviteiten(folder).execute()
-    ZakenBesluiten(folder).execute()
-    ZakenDocumenten(folder).execute()
+    #ZakenActiviteiten(folder).execute()
+    #ZakenBesluiten(folder).execute()
+    #ZakenDocumenten(folder).execute()
     ZakenStatussen(folder).execute()
+    ZakenVervangingDoor(folder).execute()
 
 
 class TsvImport(object):
     filename = ''
     model = None
     primary_key = 'id'
+    should_exist = False
 
     def __init__(self, folder, filename=False):
         if filename:
@@ -80,6 +82,10 @@ class TsvImport(object):
                 print e
                 print row
             else:
+                if should_exist and created:
+                    print "Unexpected new data:"
+                    print row
+
                 if not created:
                     d = DictDiffer(self.model.objects.filter(id=instance.id).values()[0], row)
 
@@ -180,6 +186,7 @@ class Documenten(TsvImport):
 class ZakenRelatie(TsvImport):
     key = ''
     many_to_many = True
+    should_exist = True
 
     def __init__(self, folder, filename=False):
         super(ZakenRelatie, self).__init__(os.path.join(folder, 'Zaken'), filename)
@@ -200,7 +207,9 @@ class ZakenRelatie(TsvImport):
 
     def attach_to_zaak(self, zaak, id):
         if self.many_to_many:
-            getattr(zaak, self.key).add(id)
+            field = getattr(zaak, self.key)
+            if not field.exist(id=id)
+                field.add(id)
         else:
             setattr(zaak, self.key + '_id', id)
 
@@ -233,8 +242,15 @@ class ZakenDocumenten(ZakenRelatie):
     many_to_many = True
 
 
+class ZakenVervangingDoor(ZakenRelatie):
+    filename = 'VervangenDoor.tsv'
+    model = Zaak
+    key = 'vervanging'
+    many_to_many = True
+
+
 class ZakenStatussen(TsvImport):
-    filename = os.path.join('Zaken', 'Stemmingen.tsv')
+    filename = os.path.join('Zaken', 'Statussen.tsv')
     model = Status
 
     def handle(self, row):
