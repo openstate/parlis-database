@@ -82,13 +82,36 @@ class Activiteit(models.Model):
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
     voortzetting = models.ManyToManyField('self', symmetrical=False, related_name="voortzetting_van")
     documenten = models.ManyToManyField('Document')
-    reservering = models.ManyToManyField('Reservering')
+    reservering = models.ManyToManyField('Reservering')  # niet in tsv
 
     def __unicode__(self):
         return self.onderwerp
 
     class Meta:
         verbose_name_plural = u"Activiteiten"
+
+
+class ActiviteitActor(models.Model):
+    RELATIE = [
+		("Interpellant", "Interpellant"),
+		("Volgcommissie", "Volgcommissie"),
+		("Initiatiefnemer", "Initiatiefnemer"),
+		("Bewindspersoon c.a.", "Bewindspersoon c.a."),
+		("Relatie", "Relatie"),
+		("Afgemeld", "Afgemeld"),
+		("Deelnemer", "Deelnemer"),
+    ]
+
+    id = models.CharField(max_length=114, primary_key=True)
+    activiteit = models.ForeignKey(Activiteit)
+    naam = models.CharField(max_length=150)
+    functie = models.CharField(max_length=150, null=True)
+    partij = models.CharField(max_length=50, null=True)
+    relatie = models.CharField(max_length=150, choices=RELATIE)
+    spreektijd = models.CharField(max_length=50, null=True)
+    volgorde = models.IntegerField()
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
 
 
 class Agendapunt(models.Model):
@@ -104,8 +127,9 @@ class Agendapunt(models.Model):
     status = models.CharField(max_length=20, choices=STATUS)
     aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
     gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
-    besluiten = models.ManyToManyField('Besluit')
-    documenten = models.ManyToManyField('Document')
+
+    besluiten = models.ManyToManyField('Besluit')  # niet in tsv
+    documenten = models.ManyToManyField('Document')  # niet in tsv
 
     def __unicode__(self):
         return self.onderwerp
@@ -136,7 +160,7 @@ class Besluit(models.Model):
     gewijzigdop = models.DateTimeField(auto_now=False)
     opmerking = models.TextField(null=True, blank=True)
 
-    zaken = models.ManyToManyField('Zaak', through='Status')
+    #zaken = models.ManyToManyField('Zaak', through='Status')  # Status.besluit not in tsv
 
     def __unicode__(self):
         if not self.besluittext:
@@ -205,6 +229,7 @@ class Document(models.Model):
         verbose_name_plural = u"Documenten"
 
 
+#Niet in tsv
 class Zaal(models.Model):
     syscode = models.IntegerField(primary_key=True)
     code = models.CharField(max_length=10)
@@ -226,6 +251,7 @@ class Zaal(models.Model):
         verbose_name_plural = u"Zalen"
 
 
+# Niet in tsv
 class Reservering(models.Model):
     syscode = models.IntegerField(primary_key=True)
     nummer = models.CharField(max_length=100)
@@ -262,27 +288,6 @@ class Reservering(models.Model):
 
     def __unicode__(self):
         return "Reservering voor zaal", self.zaal
-
-
-class Actor(models.Model):
-    RELATIE = [
-        ("Rapporteur", "Rapporteur"),
-        ("Gericht aan", "Gericht aan"),
-        ("Medeindiener", "Medeindiener"),
-        ("Volgcommissie", "Volgcommissie"),
-        ("Voortouwcommissie", "Voortouwcommissie"),
-        ("Relatie", "Relatie"),
-        ("Indiener", "Indiener"),
-    ]
-
-    id = models.CharField(max_length=114, primary_key=True)
-    naam = models.CharField(max_length=150)
-    functie = models.CharField(max_length=150, null=True)
-    partij = models.CharField(max_length=50, null=True)
-    relatie = models.CharField(max_length=50, choices=RELATIE)
-    aangemaaktop = models.DateTimeField(auto_now_add=False)
-    gewijzigdop = models.DateTimeField(auto_now=False)
-    actorabreviatedname = models.CharField(max_length=50, null=True)
 
 
 class Zaak(models.Model):
@@ -338,19 +343,40 @@ class Zaak(models.Model):
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
 
-    zieook = models.ManyToManyField('self')
-    overig = models.ManyToManyField('self')  # symmetrisch?
+    zieook = models.ManyToManyField('self', symmetrical=False, related_name="zieook2")
+    overig = models.ManyToManyField('self', symmetrical=False, related_name="overig2")  # symmetrisch?
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
-    besluiten = models.ManyToManyField(Besluit)
-    activiteiten = models.ManyToManyField(Activiteit)
-    documenten = models.ManyToManyField(Document)  # , through=ZaakDocumenten <<nog niet nodig
-    actoren = models.ManyToManyField(Actor)
+    besluiten = models.ManyToManyField(Besluit, related_name='zaken2')
+    activiteiten = models.ManyToManyField(Activiteit, related_name='zaken')
+    documenten = models.ManyToManyField(Document, related_name='zaken')  # , through=ZaakDocumenten <<nog niet nodig
 
     def __unicode__(self):
         return self.onderwerp
 
     class Meta:
         verbose_name_plural = u"Zaken"
+
+
+class ZaakActor(models.Model):
+    RELATIE = [
+        ("Rapporteur", "Rapporteur"),
+        ("Gericht aan", "Gericht aan"),
+        ("Medeindiener", "Medeindiener"),
+        ("Volgcommissie", "Volgcommissie"),
+        ("Voortouwcommissie", "Voortouwcommissie"),
+        ("Relatie", "Relatie"),
+        ("Indiener", "Indiener"),
+    ]
+
+    id = models.CharField(max_length=114, primary_key=True)
+    zaak = models.ForeignKey(Zaak)
+    naam = models.CharField(max_length=150)
+    functie = models.CharField(max_length=150, null=True)
+    partij = models.CharField(max_length=50, null=True)
+    relatie = models.CharField(max_length=50, choices=RELATIE)
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
+    actorabreviatedname = models.CharField(max_length=50, null=True)
 
 
 class ZaakDocumenten(models.Model):
@@ -365,47 +391,47 @@ class ZaakDocumenten(models.Model):
 
 class Status(models.Model):
     SOORT = [
-		("Aangenomen", "Aangenomen"),
-		("Aangehouden", "Aangehouden"),
-		("Goedgekeurd", "Goedgekeurd"),
-		("Ingetrokken", "Ingetrokken"),
-		("Overgenomen", "Overgenomen"),
-		("Controversieel", "Controversieel"),
-		("Komt in gesprek", "Komt in gesprek"),
-		("Decharge verleend", "Decharge verleend"),
-		("Komt in stemmingen", "Komt in stemmingen"),
-		("Komt in werkbezoek", "Komt in werkbezoek"),
-		("Afgedaan door Kamer", "Afgedaan door Kamer"),
-		("Komt in notaoverleg", "Komt in notaoverleg"),
-		("Geschorst / verdaagd", "Geschorst / verdaagd"),
-		("Komt in plenair debat", "Komt in plenair debat"),
-		("Extern advies gevraagd", "Extern advies gevraagd"),
-		("Stenogram doorgezonden", "Stenogram doorgezonden"),
-		("Afgedaan door commissie", "Afgedaan door commissie"),
-		("Komt in algemeen overleg", "Komt in algemeen overleg"),
-		("Komt in begrotingsoverleg", "Komt in begrotingsoverleg"),
-		("Komt in wetgevingsoverleg", "Komt in wetgevingsoverleg"),
-		("Niet (meer) controversieel", "Niet (meer) controversieel"),
-		("Zonder stemming aangenomen", "Zonder stemming aangenomen"),
-		("Komt in technische briefing", "Komt in technische briefing"),
-		("Komt in procedurevergadering", "Komt in procedurevergadering"),
-		("Voor kennisgeving aangenomen", "Voor kennisgeving aangenomen"),
-		("Commissiebrief nog niet beantwoord", "Commissiebrief nog niet beantwoord"),
-		("Komt in regeling van werkzaamheden", "Komt in regeling van werkzaamheden"),
-		("Aangemeld voor plenaire behandeling", "Aangemeld voor plenaire behandeling"),
-		("Wordt gerelateerd aan plenair debat", "Wordt gerelateerd aan plenair debat"),
-		("Komt in hoorzitting/rondetafelgesprek", "Komt in hoorzitting/rondetafelgesprek"),
-		("Afgevoerd van de stand der werkzaamheden", "Afgevoerd van de stand der werkzaamheden"),
-		("Wordt gerelateerd aan commissieactiviteit", "Wordt gerelateerd aan commissieactiviteit"),
-		("Proces afgebroken: relateren met andere zaak", "Proces afgebroken: relateren met andere zaak"),
-		("Niet controversieel verklaard door de commissie", "Niet controversieel verklaard door de commissie"),
-		("Besloten overeenkomstig het voorstel van de commissie", "Besloten overeenkomstig het voorstel van de commissie"),
-		("Voorstel aan Kamer gedaan om controversieel te verklaren", "Voorstel aan Kamer gedaan om controversieel te verklaren"),
-		("Voorstel aan Kamer gedaan tot aanwijzing als groot project", "Voorstel aan Kamer gedaan tot aanwijzing als groot project"),
-		("Soort", "Soort"),
-		("Voorstel aan de Kamer gedaan tot beëindiging als groot project", "Voorstel aan de Kamer gedaan tot beëindiging als groot project"),
-		("Vervallen", "Vervallen"),
-		("Verworpen", "Verworpen"),
+        ("Aangenomen", "Aangenomen"),
+        ("Aangehouden", "Aangehouden"),
+        ("Goedgekeurd", "Goedgekeurd"),
+        ("Ingetrokken", "Ingetrokken"),
+        ("Overgenomen", "Overgenomen"),
+        ("Controversieel", "Controversieel"),
+        ("Komt in gesprek", "Komt in gesprek"),
+        ("Decharge verleend", "Decharge verleend"),
+        ("Komt in stemmingen", "Komt in stemmingen"),
+        ("Komt in werkbezoek", "Komt in werkbezoek"),
+        ("Afgedaan door Kamer", "Afgedaan door Kamer"),
+        ("Komt in notaoverleg", "Komt in notaoverleg"),
+        ("Geschorst / verdaagd", "Geschorst / verdaagd"),
+        ("Komt in plenair debat", "Komt in plenair debat"),
+        ("Extern advies gevraagd", "Extern advies gevraagd"),
+        ("Stenogram doorgezonden", "Stenogram doorgezonden"),
+        ("Afgedaan door commissie", "Afgedaan door commissie"),
+        ("Komt in algemeen overleg", "Komt in algemeen overleg"),
+        ("Komt in begrotingsoverleg", "Komt in begrotingsoverleg"),
+        ("Komt in wetgevingsoverleg", "Komt in wetgevingsoverleg"),
+        ("Niet (meer) controversieel", "Niet (meer) controversieel"),
+        ("Zonder stemming aangenomen", "Zonder stemming aangenomen"),
+        ("Komt in technische briefing", "Komt in technische briefing"),
+        ("Komt in procedurevergadering", "Komt in procedurevergadering"),
+        ("Voor kennisgeving aangenomen", "Voor kennisgeving aangenomen"),
+        ("Commissiebrief nog niet beantwoord", "Commissiebrief nog niet beantwoord"),
+        ("Komt in regeling van werkzaamheden", "Komt in regeling van werkzaamheden"),
+        ("Aangemeld voor plenaire behandeling", "Aangemeld voor plenaire behandeling"),
+        ("Wordt gerelateerd aan plenair debat", "Wordt gerelateerd aan plenair debat"),
+        ("Komt in hoorzitting/rondetafelgesprek", "Komt in hoorzitting/rondetafelgesprek"),
+        ("Afgevoerd van de stand der werkzaamheden", "Afgevoerd van de stand der werkzaamheden"),
+        ("Wordt gerelateerd aan commissieactiviteit", "Wordt gerelateerd aan commissieactiviteit"),
+        ("Proces afgebroken: relateren met andere zaak", "Proces afgebroken: relateren met andere zaak"),
+        ("Niet controversieel verklaard door de commissie", "Niet controversieel verklaard door de commissie"),
+        ("Besloten overeenkomstig het voorstel van de commissie", "Besloten overeenkomstig het voorstel van de commissie"),
+        ("Voorstel aan Kamer gedaan om controversieel te verklaren", "Voorstel aan Kamer gedaan om controversieel te verklaren"),
+        ("Voorstel aan Kamer gedaan tot aanwijzing als groot project", "Voorstel aan Kamer gedaan tot aanwijzing als groot project"),
+        ("Soort", "Soort"),
+        ("Voorstel aan de Kamer gedaan tot beëindiging als groot project", "Voorstel aan de Kamer gedaan tot beëindiging als groot project"),
+        ("Vervallen", "Vervallen"),
+        ("Verworpen", "Verworpen"),
     ]
 
     id = models.CharField(max_length=114, primary_key=True)

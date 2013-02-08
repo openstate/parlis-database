@@ -6,7 +6,7 @@ from pprint import pprint
 
 from dateutil import parser
 
-from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier, Status
+from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor
 
 
 def tsv_import(folder):
@@ -21,8 +21,21 @@ def tsv_import(folder):
     #ZakenActiviteiten(folder).execute()
     #ZakenBesluiten(folder).execute()
     #ZakenDocumenten(folder).execute()
-    ZakenStatussen(folder).execute()
-    ZakenVervangingDoor(folder).execute()
+    #ZakenStatussen(folder).execute()
+    ZakenActoren(folder).execute()
+    #ZakenVervanging(folder).execute()
+    #ZakenOverig(folder).execute()
+    #ZakenZieOok(folder).execute()
+    #ZakenVervanging2(folder).execute()
+    #ZakenOverig2(folder).execute()
+    #ZakenZieOok2(folder).execute()
+    #ActiviteitenDocumenten(folder).execute()
+    #ActiviteitenZaken(folder).execute()
+    #ActiviteitenVervangen(folder).execute()
+    #ActiviteitenVoortgezet(folder).execute()
+    #ActiviteitenVervangen2(folder).execute()
+    #ActiviteitenVoortgezet2(folder).execute()
+    ActiviteitenActoren(folder).execute()
 
 
 class TsvImport(object):
@@ -82,7 +95,7 @@ class TsvImport(object):
                 print e
                 print row
             else:
-                if should_exist and created:
+                if self.should_exist and created:
                     print "Unexpected new data:"
                     print row
 
@@ -183,35 +196,46 @@ class Documenten(TsvImport):
         super(Documenten, self).handle(row)
 
 
-class ZakenRelatie(TsvImport):
-    key = ''
+class SubtreeImport(TsvImport):
+    subfolder = ''
     many_to_many = True
     should_exist = True
 
     def __init__(self, folder, filename=False):
-        super(ZakenRelatie, self).__init__(os.path.join(folder, 'Zaken'), filename)
+        super(SubtreeImport, self).__init__(os.path.join(folder, self.subfolder), filename)
 
     def handle(self, row):
-        zaak_id = row['sid_zaak']
-        del row['sid_zaak']
+        related_id = row[self.related_key]
+        del row[self.related_key]
 
-        super(ZakenRelatie, self).handle(row)
+        super(SubtreeImport, self).handle(row)
 
         try:
-            zaak = Zaak.objects.get(id=zaak_id)
+            related = self.related_model.objects.get(id=related_id)
         except:
-            print "Missing zaak: %s" % zaak_id
+            print "Missing %s: %s" % (self.related_model._meta.verbose_name.title(), related_id)
         else:
-            self.attach_to_zaak(zaak, row['id'])
-            zaak.save()
+            self.attach_to(related, row['id'])
+            related.save()
 
-    def attach_to_zaak(self, zaak, id):
+    def attach_to(self, instance, id):
         if self.many_to_many:
-            field = getattr(zaak, self.key)
-            if not field.exist(id=id)
-                field.add(id)
+            field = getattr(instance, self.key)
+            field.add(id)
         else:
-            setattr(zaak, self.key + '_id', id)
+            setattr(instance, self.key + '_id', id)
+
+
+class ZakenRelatie(SubtreeImport):
+    subfolder = 'Zaken'
+    related_key = 'sid_zaak'
+    related_model = Zaak
+
+
+class ActiviteitenRelatie(SubtreeImport):
+    subfolder = 'ActiviteitRelaties'
+    related_key = 'sid_activiteit'
+    related_model = Activiteit
 
 
 class ZakenRelatieKamerstukDossier(ZakenRelatie):
@@ -219,7 +243,6 @@ class ZakenRelatieKamerstukDossier(ZakenRelatie):
     model = Kamerstukdossier
     key = 'kamerstukdossier'
     many_to_many = False
-
 
 class ZakenActiviteiten(ZakenRelatie):
     filename = 'Activiteiten.tsv'
@@ -242,10 +265,45 @@ class ZakenDocumenten(ZakenRelatie):
     many_to_many = True
 
 
-class ZakenVervangingDoor(ZakenRelatie):
+class ZakenVervanging(ZakenRelatie):
+    filename = 'VervangenVanuit.tsv'
+    model = Zaak
+    key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ZakenVervanging2(ZakenRelatie):
     filename = 'VervangenDoor.tsv'
     model = Zaak
-    key = 'vervanging'
+    key = 'vervanger'
+    many_to_many = True
+
+
+class ZakenOverig(ZakenRelatie):
+    filename = 'HoofdOverig.tsv'
+    model = Zaak
+    key = 'overig'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ZakenOverig2(ZakenRelatie):
+    filename = 'GerelateerdOverig.tsv'
+    model = Zaak
+    key = 'overig2'
+    many_to_many = True
+
+
+class ZakenZieOok(ZakenRelatie):
+    filename = 'GerelateerdNaar.tsv'
+    model = Zaak
+    key = 'zieook'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ZakenZieOok2(ZakenRelatie):
+    filename = 'GerelateerdVanuit.tsv'
+    model = Zaak
+    key = 'zieook2'
     many_to_many = True
 
 
@@ -256,8 +314,69 @@ class ZakenStatussen(TsvImport):
     def handle(self, row):
         row['zaak_id'] = row['sid_zaak']
         del row['sid_zaak']
-        super(Stemmingen, self).handle(row)
+        super(ZakenStatussen, self).handle(row)
 
+
+class ZakenActoren(TsvImport):
+    filename = os.path.join('Zaken', 'ZaakActoren.tsv')
+    model = ZaakActor
+
+    def handle(self, row):
+        row['zaak_id'] = row['sid_zaak']
+        del row['sid_zaak']
+        super(ZakenActoren, self).handle(row)
+
+
+class ActiviteitenZaken(ActiviteitenRelatie):
+    filename = 'Zaken.tsv'
+    model = Zaak
+    key = 'zaken'
+    many_to_many = True
+
+
+class ActiviteitenDocumenten(ActiviteitenRelatie):
+    filename = 'Documenten.tsv'
+    model = Document
+    key = 'documenten'
+    many_to_many = True
+
+
+class ActiviteitenVervangen(ActiviteitenRelatie):
+    filename = 'VervangenDoor.tsv'
+    model = Activiteit
+    key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ActiviteitenVervangen2(ActiviteitenRelatie):
+    filename = 'VervangenVanuit.tsv'
+    model = Activiteit
+    key = 'vervanger'
+    many_to_many = True
+
+
+class ActiviteitenVoortgezet(ActiviteitenRelatie):
+    filename = 'VoortgezetIn.tsv'
+    model = Activiteit
+    key = 'voortzetting'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ActiviteitenVoortgezet2(ActiviteitenRelatie):
+    filename = 'VoortgezetVanuit.tsv'
+    model = Activiteit
+    key = 'voortzetting_van'
+    many_to_many = True
+
+
+class ActiviteitenActoren(TsvImport):
+    filename = os.path.join('ActiviteitRelaties', 'ActiviteitActoren.tsv')
+    model = ActiviteitActor
+
+    def handle(self, row):
+        row['activiteit_id'] = row['sid_activiteit']
+        del row['sid_activiteit']
+        super(ActiviteitenActoren, self).handle(row)
 
 """
 A dictionary difference calculator
