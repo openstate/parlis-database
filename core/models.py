@@ -63,7 +63,7 @@ class Activiteit(models.Model):
     onderwerp = models.TextField()
     soort = models.CharField(max_length=50, choices=SOORT)
     datumsoort = models.CharField(max_length=50, choices=DATUMSOORT)
-    datum = models.DateTimeField(null=True, blank=True)  # Niet in tsv
+    datum = models.DateTimeField(null=True, blank=True)  # Niet in tsv, wel in Zaken_Activiteiten
     aanvangstijd = models.DateTimeField(null=True, blank=True)
     eindtijd = models.DateTimeField(null=True, blank=True)
     locatie = models.CharField(max_length=100, null=True, blank=True)
@@ -156,7 +156,7 @@ class Kamerstukdossier(models.Model):
     toevoeging = models.CharField(max_length=10, null=True, blank=True)
     hoogstevolgnummer = models.IntegerField(null=True, blank=True)
     afgesloten = models.IntegerField(null=True, blank=True)
-    kamer = models.CharField(max_length=50, null=True, blank=True)
+    kamer = models.CharField(max_length=50, choices=KAMER)
     aangemaaktop = models.DateTimeField(null=True, blank=True, auto_now_add=False)
     gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
 

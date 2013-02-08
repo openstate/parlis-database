@@ -15,7 +15,8 @@ def tsv_import(folder):
 
     #Agendapunten(folder).execute()
     #Stemmingen(folder).execute()
-    ZakenRelatieKamerstukDossier(folder).execute()
+    #ZakenRelatieKamerstukDossier(folder).execute()
+    ZakenRelatieActiviteiten(folder).execute()
 
 
 class TsvImport(object):
@@ -73,11 +74,41 @@ class TsvImport(object):
             except:
                 print row
             else:
-                if not created and False:
+                if not created:
                     d = DictDiffer(self.model.objects.filter(id=instance.id).values()[0], row)
-                    print "Added:", d.added()
-                    print "Removed:", d.removed()
-                    print "Changed values:", map(lambda x: {x: (row[x], getattr(instance, x))}, d.changed())
+
+                    if d.added():
+                        print "Added:", d.added()
+
+                    if d.removed():
+                        print "Removed:", d.removed()
+
+                    def make_list_value(value):
+                        # Do some conversions explicit to reduce false positives
+                        same = False
+
+                        try:
+                            same = row[value].strip() == getattr(instance, value)
+                        except:
+                            pass
+
+                        try:
+                            same = int(row[value]) == getattr(instance, value)
+                        except:
+                            pass
+
+                        try:
+                            if getattr(instance, value) == None:
+                                same = row[value].strip() == ''
+                        except:
+                            pass
+
+                        if not same:
+                            return {value: (row[value], getattr(instance, value))}
+                    list = [x for x in map(make_list_value, d.changed()) if x]
+
+                    if list:
+                        print "Changed values:", list
         else:
             instance = self.model()
 
@@ -85,7 +116,6 @@ class TsvImport(object):
                 setattr(instance, key, row[key])
 
             instance.save()
-        return instance
 
 
 class Zaken(TsvImport):
@@ -133,27 +163,46 @@ class Documenten(TsvImport):
         super(Documenten, self).handle(row)
 
 
-class ZakenRelatieKamerstukDossier(TsvImport):
-    filename = 'KamerstukDossier.tsv'
-    model = Kamerstukdossier
-    key = 'kamerstukdossier'
+class ZakenRelatie(TsvImport):
+    key = ''
+    many_to_many = True
 
     def __init__(self, folder, filename=False):
-        super(ZakenRelatieKamerstukDossier, self).__init__(os.path.join(folder, 'Zaken'), filename)
+        super(ZakenRelatie, self).__init__(os.path.join(folder, 'Zaken'), filename)
 
     def handle(self, row):
         zaak_id = row['sid_zaak']
         del row['sid_zaak']
 
-        instance = super(ZakenRelatieKamerstukDossier, self).handle(row)
+        super(ZakenRelatie, self).handle(row)
 
         try:
             zaak = Zaak.objects.get(id=zaak_id)
         except:
             print "Missing zaak: %s" % zaak_id
         else:
-            setattr(zaak, self.key, instance)
+            self.attach_to_zaak(zaak, row['id'])
             zaak.save()
+
+    def attach_to_zaak(self, zaak, id):
+        if self.many_to_many:
+            getattr(zaak, self.key).add(id)
+        else:
+            setattr(zaak, self.key + '_id', id)
+
+
+class ZakenRelatieKamerstukDossier(ZakenRelatie):
+    filename = 'KamerstukDossier.tsv'
+    model = Kamerstukdossier
+    key = 'kamerstukdossier'
+    many_to_many = False
+
+
+class ZakenRelatieActiviteiten(ZakenRelatie):
+    filename = 'Activiteiten.tsv'
+    model = Activiteit
+    key = 'activiteiten'
+    many_to_many = True
 
 
 """
