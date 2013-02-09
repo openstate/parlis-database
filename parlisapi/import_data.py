@@ -17,12 +17,12 @@ def tsv_import(folder):
         #Documenten,
         #Agendapunten,
         #Stemmingen,
-        #ZakenRelatieKamerstukDossier,
+        ZakenRelatieKamerstukDossier,
         #ZakenActiviteiten,
         #ZakenBesluiten,
         #ZakenDocumenten,
         #ZakenStatussen,
-        ZakenActoren,
+        #ZakenActoren,
         #ZakenVervanging,
         #ZakenOverig,
         #ZakenZieOok,
@@ -35,7 +35,7 @@ def tsv_import(folder):
         #ActiviteitenVoortgezet,
         #ActiviteitenVervangen2,
         #ActiviteitenVoortgezet2,
-        ActiviteitenActoren,
+        #ActiviteitenActoren,
     ]
 
     for klass in klasses:
