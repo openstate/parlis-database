@@ -93,13 +93,13 @@ class Activiteit(models.Model):
 
 class ActiviteitActor(models.Model):
     RELATIE = [
-		("Interpellant", "Interpellant"),
-		("Volgcommissie", "Volgcommissie"),
-		("Initiatiefnemer", "Initiatiefnemer"),
-		("Bewindspersoon c.a.", "Bewindspersoon c.a."),
-		("Relatie", "Relatie"),
-		("Afgemeld", "Afgemeld"),
-		("Deelnemer", "Deelnemer"),
+        ("Interpellant", "Interpellant"),
+        ("Volgcommissie", "Volgcommissie"),
+        ("Initiatiefnemer", "Initiatiefnemer"),
+        ("Bewindspersoon c.a.", "Bewindspersoon c.a."),
+        ("Relatie", "Relatie"),
+        ("Afgemeld", "Afgemeld"),
+        ("Deelnemer", "Deelnemer"),
     ]
 
     id = models.CharField(max_length=114, primary_key=True)
@@ -112,6 +112,9 @@ class ActiviteitActor(models.Model):
     volgorde = models.IntegerField()
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
+
+    def __unicode__(self):
+        return '%s van %s (%s)' % (self.naam, self.partij, self.functie)
 
 
 class Agendapunt(models.Model):
@@ -142,7 +145,6 @@ class Besluit(models.Model):
     STEMMINGSSOORT = [
         ("Hoofdelijk", "Hoofdelijk"),
         ("Met handopsteken", "Met handopsteken"),
-        ("StemmingsSoort", "StemmingsSoort"),
         ("Zonder stemming", "Zonder stemming"),
     ]
 
@@ -163,9 +165,7 @@ class Besluit(models.Model):
     #zaken = models.ManyToManyField('Zaak', through='Status')  # Status.besluit not in tsv
 
     def __unicode__(self):
-        if not self.besluittext:
-            return "leeg"
-        return self.besluittext
+        return self.id
 
     class Meta:
         verbose_name_plural = u"Besluiten"
@@ -193,8 +193,8 @@ class Kamerstukdossier(models.Model):
 class Document(models.Model):
     KAMER = [
         ('2', '2 Tweede Kamer?'),
-        ('3', '3'),
-        ('4', '4'),
+        ('3', '3 Eerste Kamer?'),
+        ('4', '4 Eerste Kamer en Tweede Kamer?'),
     ]
 
     id = models.CharField(max_length=114, primary_key=True)
@@ -217,13 +217,11 @@ class Document(models.Model):
     kenmerkafzender = models.CharField(max_length=20, null=True, blank=True)
     contenttype = models.CharField(max_length=30, null=True, blank=True)
 
-    bijlagen = models.ManyToManyField('self', symmetrical=False, related_name="bijlage_van")
-    vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
+    bijlagen = models.ManyToManyField('self', symmetrical=False, related_name="bijlage_van")  #Niet in tsv
+    vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")  #Niet in tsv
 
     def __unicode__(self):
-        if not self.titel:
-            return "leeg"
-        return self.titel
+        return self.documentnummer
 
     class Meta:
         verbose_name_plural = u"Documenten"
@@ -351,7 +349,7 @@ class Zaak(models.Model):
     documenten = models.ManyToManyField(Document, related_name='zaken')  # , through=ZaakDocumenten <<nog niet nodig
 
     def __unicode__(self):
-        return self.onderwerp
+        return self.citeertitel if self.citeertitel else self.id
 
     class Meta:
         verbose_name_plural = u"Zaken"
@@ -377,6 +375,9 @@ class ZaakActor(models.Model):
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
     actorabreviatedname = models.CharField(max_length=50, null=True)
+
+    def __unicode__(self):
+        return '%s van %s (%s)' % (self.naam, self.partij, self.relatie)
 
 
 class ZaakDocumenten(models.Model):
@@ -443,7 +444,7 @@ class Status(models.Model):
     gewijzigdop = models.DateTimeField(auto_now=False)
 
     def __unicode__(self):
-        return self.soort
+        return self.id
 
     class Meta:
         verbose_name_plural = u"Statussen"
@@ -468,6 +469,9 @@ class Stemming(models.Model):
     gewijzigdop = models.DateTimeField(null=True, blank=True, auto_now=False)
     sid_actorlid = models.CharField(max_length=70, null=True, blank=True)
     sid_actorfractie = models.CharField(max_length=70, blank=True)
+
+    def __unicode__(self):
+        return self.id
 
     class Meta:
         verbose_name_plural = u"Stemmingen"

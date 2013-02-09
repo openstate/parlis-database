@@ -10,32 +10,36 @@ from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemmin
 
 
 def tsv_import(folder):
-    #Zaken(folder).execute()
-    #Activiteiten(folder).execute()
-    #Besluiten(folder).execute()
-    #Documenten(folder).execute()
+    klasses = [
+        #Zaken,
+        #Activiteiten,
+        #Besluiten,
+        #Documenten,
+        #Agendapunten,
+        #Stemmingen,
+        #ZakenRelatieKamerstukDossier,
+        #ZakenActiviteiten,
+        #ZakenBesluiten,
+        #ZakenDocumenten,
+        #ZakenStatussen,
+        ZakenActoren,
+        #ZakenVervanging,
+        #ZakenOverig,
+        #ZakenZieOok,
+        #ZakenVervanging2,
+        #ZakenOverig2,
+        #ZakenZieOok2,
+        #ActiviteitenDocumenten,
+        #ActiviteitenZaken,
+        #ActiviteitenVervangen,
+        #ActiviteitenVoortgezet,
+        #ActiviteitenVervangen2,
+        #ActiviteitenVoortgezet2,
+        ActiviteitenActoren,
+    ]
 
-    #Agendapunten(folder).execute()
-    #Stemmingen(folder).execute()
-    #ZakenRelatieKamerstukDossier(folder).execute()
-    #ZakenActiviteiten(folder).execute()
-    #ZakenBesluiten(folder).execute()
-    #ZakenDocumenten(folder).execute()
-    #ZakenStatussen(folder).execute()
-    ZakenActoren(folder).execute()
-    #ZakenVervanging(folder).execute()
-    #ZakenOverig(folder).execute()
-    #ZakenZieOok(folder).execute()
-    #ZakenVervanging2(folder).execute()
-    #ZakenOverig2(folder).execute()
-    #ZakenZieOok2(folder).execute()
-    #ActiviteitenDocumenten(folder).execute()
-    #ActiviteitenZaken(folder).execute()
-    #ActiviteitenVervangen(folder).execute()
-    #ActiviteitenVoortgezet(folder).execute()
-    #ActiviteitenVervangen2(folder).execute()
-    #ActiviteitenVoortgezet2(folder).execute()
-    ActiviteitenActoren(folder).execute()
+    for klass in klasses:
+        klass(folder).execute()
 
 
 class TsvImport(object):
