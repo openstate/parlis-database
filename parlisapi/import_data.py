@@ -6,36 +6,41 @@ from pprint import pprint
 
 from dateutil import parser
 
-from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor
+from .dictdiffer import DictDiffer
+
+from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, \
+                        Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor
 
 
 def tsv_import(folder):
+
+    #order is important
     klasses = [
-        #Zaken,
-        #Activiteiten,
-        #Besluiten,
-        #Documenten,
-        #Agendapunten,
-        #Stemmingen,
+        Zaken,
+        ZakenVervanging,
+        ZakenOverig,
+        ZakenZieOok,
+        Activiteiten,
+        ActiviteitenVervangen,
+        ActiviteitenVoortgezet,
+        Besluiten,
+        Documenten,
+        Agendapunten,
+        Stemmingen,
         ZakenRelatieKamerstukDossier,
-        #ZakenActiviteiten,
-        #ZakenBesluiten,
-        #ZakenDocumenten,
-        #ZakenStatussen,
-        #ZakenActoren,
-        #ZakenVervanging,
-        #ZakenOverig,
-        #ZakenZieOok,
-        #ZakenVervanging2,
-        #ZakenOverig2,
-        #ZakenZieOok2,
-        #ActiviteitenDocumenten,
-        #ActiviteitenZaken,
-        #ActiviteitenVervangen,
-        #ActiviteitenVoortgezet,
-        #ActiviteitenVervangen2,
-        #ActiviteitenVoortgezet2,
-        #ActiviteitenActoren,
+        ZakenActiviteiten,
+        ZakenBesluiten,
+        ZakenDocumenten,
+        ZakenStatussen,
+        ZakenActoren,
+        ZakenVervanging2,
+        ZakenOverig2,
+        ZakenZieOok2,
+        ActiviteitenDocumenten,
+        ActiviteitenZaken,
+        ActiviteitenVervangen2,
+        ActiviteitenVoortgezet2,
+        ActiviteitenActoren,
     ]
 
     for klass in klasses:
@@ -43,19 +48,30 @@ def tsv_import(folder):
 
 
 class TsvImport(object):
+    data = False
+    folder = ''
     filename = ''
     model = None
     primary_key = 'id'
     should_exist = False
 
-    def __init__(self, folder, filename=False):
-        if filename:
-            self.filename = filename
+    def __init__(self, folder='', data=False):
+        if data:
+            self.data = data
 
         self.folder = folder
 
     def getData(self, file):
-        '''transform tsv data for processing'''
+        '''transform tsv data for processing
+
+            #sample data
+            >>> data = "Id\tField\n1234\tTekst With return\ris bad"
+
+            #execute
+            >>> getData(None, data)
+            "id\tfield\n1234\tTekst With return\\nis bad"
+
+        '''
 
         # lowercase fieldnames
         yield file.next().lower()
@@ -65,14 +81,19 @@ class TsvImport(object):
             yield line.replace('\r', '\\n')
 
     def execute(self):
-        with open(os.path.join(self.folder, self.filename)) as IN:
+        if self.data:
+            self.read(self.data)
+        else:
+            with open(os.path.join(self.folder, self.filename)) as IN:
+                self.read(IN)
 
-            reader = csv.DictReader(self.getData(IN), dialect=csv.excel_tab, restkey='rest')
+    def read(self, data):
+        reader = csv.DictReader(self.getData(data), dialect=csv.excel_tab, restkey='rest')
 
-            for row in reader:
-                if 'rest' in row:
-                    print row['rest']
-                self.handle(row)
+        for row in reader:
+            if 'rest' in row:
+                print row['rest']
+            self.handle(row)
 
     def handle(self, row):
 
@@ -92,6 +113,7 @@ class TsvImport(object):
             if TIMESTAMP.search(value):
                 row[key] = parser.parse(value + ' CET')
 
+        #always the case
         if self.primary_key:
             try:
                 instance, created = self.model.objects.get_or_create(id=row[self.primary_key], defaults=row)
@@ -103,6 +125,7 @@ class TsvImport(object):
                     print "Unexpected new data:"
                     print row
 
+                #check for strange stuff
                 if not created:
                     d = DictDiffer(self.model.objects.filter(id=instance.id).values()[0], row)
 
@@ -135,12 +158,13 @@ class TsvImport(object):
                             pass
 
                         try:
-                            same = getattr(instance, value).replace(microseconds=0) == row[value].replace(microseconds=0)
+                            same = getattr(instance, value).replace(microseconds=0, tzinfo=None) == row[value].replace(microseconds=0, tzinfo=None)
                         except:
                             pass
 
                         if not same:
                             return {value: (row[value], getattr(instance, value))}
+
                     list = [x for x in map(make_list_value, d.changed()) if x]
 
                     if list:
@@ -153,6 +177,42 @@ class TsvImport(object):
                 setattr(instance, key, row[key])
 
             instance.save()
+
+
+class SubtreeImport(TsvImport):
+    subfolder = ''
+    many_to_many = True
+    should_exist = True
+
+    def __init__(self, folder, data=False):
+        super(SubtreeImport, self).__init__(os.path.join(folder, self.subfolder), data)
+
+    def handle(self, row):
+        related_id = row[self.related_key]
+        del row[self.related_key]
+
+        super(SubtreeImport, self).handle(row)
+
+        try:
+            related = self.related_model.objects.get(id=related_id)
+        except:
+            print "Missing %s: %s" % (self.related_model._meta.verbose_name.title(), related_id)
+        else:
+            self.attach_to(related, row['id'])
+            related.save()
+
+    def attach_to(self, instance, id):
+        if self.many_to_many:
+            field = getattr(instance, self.key)
+            field.add(id)
+        else:
+            setattr(instance, self.key + '_id', id)
+
+
+"""
+Actual imports
+each class matches a tsv file
+"""
 
 
 class Zaken(TsvImport):
@@ -200,36 +260,6 @@ class Documenten(TsvImport):
         super(Documenten, self).handle(row)
 
 
-class SubtreeImport(TsvImport):
-    subfolder = ''
-    many_to_many = True
-    should_exist = True
-
-    def __init__(self, folder, filename=False):
-        super(SubtreeImport, self).__init__(os.path.join(folder, self.subfolder), filename)
-
-    def handle(self, row):
-        related_id = row[self.related_key]
-        del row[self.related_key]
-
-        super(SubtreeImport, self).handle(row)
-
-        try:
-            related = self.related_model.objects.get(id=related_id)
-        except:
-            print "Missing %s: %s" % (self.related_model._meta.verbose_name.title(), related_id)
-        else:
-            self.attach_to(related, row['id'])
-            related.save()
-
-    def attach_to(self, instance, id):
-        if self.many_to_many:
-            field = getattr(instance, self.key)
-            field.add(id)
-        else:
-            setattr(instance, self.key + '_id', id)
-
-
 class ZakenRelatie(SubtreeImport):
     subfolder = 'Zaken'
     related_key = 'sid_zaak'
@@ -247,6 +277,8 @@ class ZakenRelatieKamerstukDossier(ZakenRelatie):
     model = Kamerstukdossier
     key = 'kamerstukdossier'
     many_to_many = False
+    should_exist = False
+
 
 class ZakenActiviteiten(ZakenRelatie):
     filename = 'Activiteiten.tsv'
@@ -381,39 +413,3 @@ class ActiviteitenActoren(TsvImport):
         row['activiteit_id'] = row['sid_activiteit']
         del row['sid_activiteit']
         super(ActiviteitenActoren, self).handle(row)
-
-"""
-A dictionary difference calculator
-Originally posted as:
-http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
-"""
-
-
-class DictDiffer(object):
-    """
-Calculate the difference between two dictionaries as:
-(1) items added
-(2) items removed
-(3) keys same in both but changed values
-(4) keys same in both and unchanged values
-"""
-    def __init__(self, current_dict, past_dict):
-        self.current_dict, self.past_dict = current_dict, past_dict
-        self.current_keys, self.past_keys = [
-            set(d.keys()) for d in (current_dict, past_dict)
-        ]
-        self.intersect = self.current_keys.intersection(self.past_keys)
-
-    def added(self):
-        return self.current_keys - self.intersect
-
-    def removed(self):
-        return self.past_keys - self.intersect
-
-    def changed(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] != self.current_dict[o])
-
-    def unchanged(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] == self.current_dict[o])
