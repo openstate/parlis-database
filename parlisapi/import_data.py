@@ -128,7 +128,7 @@ class TsvImport(object):
                 #check for strange stuff
                 if not created:
                     d = DictDiffer(self.model.objects.filter(id=instance.id).values()[0], row)
-
+                    print row[self.primary_key]
                     if d.added():
                         print "Added:", d.added()
 
@@ -184,8 +184,8 @@ class SubtreeImport(TsvImport):
     many_to_many = True
     should_exist = True
 
-    def __init__(self, folder, data=False):
-        super(SubtreeImport, self).__init__(os.path.join(folder, self.subfolder), data)
+#    def __init__(self, folder, data=False):
+#        super(SubtreeImport, self).__init__(os.path.join(folder, self.subfolder), data)
 
     def handle(self, row):
         related_id = row[self.related_key]
@@ -273,7 +273,7 @@ class ActiviteitenRelatie(SubtreeImport):
 
 
 class ZakenRelatieKamerstukDossier(ZakenRelatie):
-    filename = 'KamerstukDossier.tsv'
+    filename = 'Zaken_KamerstukDossier.tsv'
     model = Kamerstukdossier
     key = 'kamerstukdossier'
     many_to_many = False
@@ -281,70 +281,70 @@ class ZakenRelatieKamerstukDossier(ZakenRelatie):
 
 
 class ZakenActiviteiten(ZakenRelatie):
-    filename = 'Activiteiten.tsv'
+    filename = 'Zaken_Activiteiten.tsv'
     model = Activiteit
     key = 'activiteiten'
     many_to_many = True
 
 
 class ZakenBesluiten(ZakenRelatie):
-    filename = 'Besluiten.tsv'
+    filename = 'Zaken_Besluiten.tsv'
     model = Besluit
     key = 'besluiten'
     many_to_many = True
 
 
 class ZakenDocumenten(ZakenRelatie):
-    filename = 'Documenten.tsv'
+    filename = 'Zaken_Documenten.tsv'
     model = Document
     key = 'documenten'
     many_to_many = True
 
 
 class ZakenVervanging(ZakenRelatie):
-    filename = 'VervangenVanuit.tsv'
+    filename = 'Zaken_VervangenVanuit.tsv'
     model = Zaak
     key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
     many_to_many = True
 
 
 class ZakenVervanging2(ZakenRelatie):
-    filename = 'VervangenDoor.tsv'
+    filename = 'Zaken_VervangenDoor.tsv'
     model = Zaak
     key = 'vervanger'
     many_to_many = True
 
 
 class ZakenOverig(ZakenRelatie):
-    filename = 'HoofdOverig.tsv'
+    filename = 'Zaken_HoofdOverig.tsv'
     model = Zaak
     key = 'overig'  # This one is in the right direction, related to ZakenOverig2
     many_to_many = True
 
 
 class ZakenOverig2(ZakenRelatie):
-    filename = 'GerelateerdOverig.tsv'
+    filename = 'Zaken_GerelateerdOverig.tsv'
     model = Zaak
     key = 'overig2'
     many_to_many = True
 
 
 class ZakenZieOok(ZakenRelatie):
-    filename = 'GerelateerdNaar.tsv'
+    filename = 'Zaken_GerelateerdNaar.tsv'
     model = Zaak
     key = 'zieook'  # This one is in the right direction, related to ZakenOverig2
     many_to_many = True
 
 
 class ZakenZieOok2(ZakenRelatie):
-    filename = 'GerelateerdVanuit.tsv'
+    filename = 'Zaken_GerelateerdVanuit.tsv'
     model = Zaak
     key = 'zieook2'
     many_to_many = True
 
 
 class ZakenStatussen(TsvImport):
-    filename = os.path.join('Zaken', 'Statussen.tsv')
+    filename = 'Zaken_Statussen.tsv'
     model = Status
 
     def handle(self, row):
@@ -354,7 +354,7 @@ class ZakenStatussen(TsvImport):
 
 
 class ZakenActoren(TsvImport):
-    filename = os.path.join('Zaken', 'ZaakActoren.tsv')
+    filename = 'Zaken_ZaakActoren.tsv'
     model = ZaakActor
 
     def handle(self, row):
@@ -364,49 +364,49 @@ class ZakenActoren(TsvImport):
 
 
 class ActiviteitenZaken(ActiviteitenRelatie):
-    filename = 'Zaken.tsv'
+    filename = 'Activiteiten_Zaken.tsv'
     model = Zaak
     key = 'zaken'
     many_to_many = True
 
 
 class ActiviteitenDocumenten(ActiviteitenRelatie):
-    filename = 'Documenten.tsv'
+    filename = 'Activiteiten_Documenten.tsv'
     model = Document
     key = 'documenten'
     many_to_many = True
 
 
 class ActiviteitenVervangen(ActiviteitenRelatie):
-    filename = 'VervangenDoor.tsv'
+    filename = 'Activiteiten_VervangenDoor.tsv'
     model = Activiteit
     key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
     many_to_many = True
 
 
 class ActiviteitenVervangen2(ActiviteitenRelatie):
-    filename = 'VervangenVanuit.tsv'
+    filename = 'Activiteiten_VervangenVanuit.tsv'
     model = Activiteit
     key = 'vervanger'
     many_to_many = True
 
 
 class ActiviteitenVoortgezet(ActiviteitenRelatie):
-    filename = 'VoortgezetIn.tsv'
+    filename = 'Activiteiten_VoortgezetIn.tsv'
     model = Activiteit
     key = 'voortzetting'  # This one is in the right direction, related to ZakenOverig2
     many_to_many = True
 
 
 class ActiviteitenVoortgezet2(ActiviteitenRelatie):
-    filename = 'VoortgezetVanuit.tsv'
+    filename = 'Activiteiten_VoortgezetVanuit.tsv'
     model = Activiteit
     key = 'voortzetting_van'
     many_to_many = True
 
 
 class ActiviteitenActoren(TsvImport):
-    filename = os.path.join('ActiviteitRelaties', 'ActiviteitActoren.tsv')
+    filename = 'Activiteiten_ActiviteitActoren.tsv'
     model = ActiviteitActor
 
     def handle(self, row):

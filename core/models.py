@@ -338,6 +338,7 @@ class Zaak(models.Model):
     grootproject = models.NullBooleanField()
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
+    agendapuntzakenvolgorde = models.IntegerField(null=True, blank=True)
 
     zieook = models.ManyToManyField('self', symmetrical=False, related_name="zieook2")
     overig = models.ManyToManyField('self', symmetrical=False, related_name="overig2")  # symmetrisch?
