@@ -76,13 +76,13 @@ class Activiteit(models.Model):
     gewijzigdop = models.DateTimeField(auto_now=False)
     vrsnummer = models.IntegerField(blank=True, null=True)
     voortouwnaam = models.CharField(max_length=150)
-    voortouwafkorting = models.CharField(max_length=7)
+    voortouwafkorting = models.CharField(max_length=20)
     voortouwkortenaam = models.CharField(max_length=50)
 
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
     voortzetting = models.ManyToManyField('self', symmetrical=False, related_name="voortzetting_van")
-    documenten = models.ManyToManyField('Document')
-    reservering = models.ManyToManyField('Reservering')  # niet in tsv
+    documenten = models.ManyToManyField('Document', related_name='activiteiten')
+    reservering = models.ManyToManyField('Reservering', related_name='activiteiten')  # niet in tsv
 
     def __unicode__(self):
         return self.onderwerp
@@ -103,7 +103,7 @@ class ActiviteitActor(models.Model):
     ]
 
     id = models.CharField(max_length=36, primary_key=True)
-    activiteit = models.ForeignKey(Activiteit)
+    activiteit = models.ForeignKey(Activiteit, related_name='actoren')
     naam = models.CharField(max_length=150)
     functie = models.CharField(max_length=150, null=True)
     partij = models.CharField(max_length=50, null=True)
@@ -120,7 +120,7 @@ class ActiviteitActor(models.Model):
 class Agendapunt(models.Model):
     id = models.CharField(max_length=36, primary_key=True)
     nummer = models.CharField(max_length=10)
-    activiteit = models.ForeignKey(Activiteit)
+    activiteit = models.ForeignKey(Activiteit, related_name='agendapunten')
     onderwerp = models.TextField()
     aanvangstijd = models.DateTimeField(null=True, blank=True)
     eindtijd = models.DateTimeField(null=True, blank=True)
@@ -131,8 +131,8 @@ class Agendapunt(models.Model):
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
 
-    besluiten = models.ManyToManyField('Besluit')  # niet in tsv
-    documenten = models.ManyToManyField('Document')  # niet in tsv
+    besluiten = models.ManyToManyField('Besluit', related_name='agendapunten')  # niet in tsv
+    documenten = models.ManyToManyField('Document', related_name='agendapunten')  # niet in tsv
 
     def __unicode__(self):
         return self.onderwerp
@@ -197,7 +197,7 @@ class Document(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True)
     documentnummer = models.CharField(max_length=10)
-    kamerstukdossier = models.ForeignKey(Kamerstukdossier, null=True, blank=True)  # Mist in tsv
+    kamerstukdossier = models.ForeignKey(Kamerstukdossier, null=True, blank=True, related_name='documenten')  # Mist in tsv
     titel = models.TextField(null=True, blank=True)
     soort = models.CharField(max_length=100, null=True)
     onderwerp = models.TextField()
@@ -280,7 +280,7 @@ class Reservering(models.Model):
     toelichting = models.CharField(max_length=100)
     catering = models.IntegerField()
     activiteitnummer = models.CharField(max_length=10)
-    zaalsyscode = models.ForeignKey(Zaal)
+    zaalsyscode = models.ForeignKey(Zaal, related_name='reserveringen')
 
     def __unicode__(self):
         return "Reservering voor zaal", self.zaal
@@ -331,13 +331,15 @@ class Zaak(models.Model):
     grondslagvoorhang = models.CharField(max_length=700, null=True, blank=True)
     termijn = models.DateTimeField(null=True, blank=True)
     vergaderjaar = models.CharField(max_length=9)
-    kamerstukdossier = models.ForeignKey(Kamerstukdossier, null=True, blank=True)  # Niet in tsv
+    kamerstukdossier = models.ForeignKey(Kamerstukdossier, null=True, blank=True, related_name='zaken')  # Niet in tsv
     volgnummer = models.IntegerField()
     huidigebehandelstatus = models.CharField(max_length=1, null=True, blank=True)
     afgedaan = models.BooleanField()
     grootproject = models.NullBooleanField()
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
+    agendapuntzakenvolgorde = models.IntegerField(null=True, blank=True)
+
 
     zieook = models.ManyToManyField('self', symmetrical=False, related_name="zieook2")
     overig = models.ManyToManyField('self', symmetrical=False, related_name="overig2")  # symmetrisch?
@@ -376,7 +378,7 @@ class ZaakActor(models.Model):
     ]
 
     id = models.CharField(max_length=36, primary_key=True)
-    zaak = models.ForeignKey(Zaak)
+    zaak = models.ForeignKey(Zaak, related_name='actoren')
     naam = models.CharField(max_length=150)
     functie = models.CharField(max_length=150, null=True)
     partij = models.CharField(max_length=50, null=True)
@@ -438,8 +440,8 @@ class Status(models.Model):
     ]
 
     id = models.CharField(max_length=36, primary_key=True)
-    zaak = models.ForeignKey(Zaak, related_name="status2")
-    besluit = models.ForeignKey(Besluit, related_name='status2', null=True, blank=True)  # niet in tsv
+    zaak = models.ForeignKey(Zaak, related_name="statussen")
+    besluit = models.ForeignKey(Besluit, related_name='statussen', null=True, blank=True)  # niet in tsv
     soort = models.CharField(max_length=100)
     datum = models.DateTimeField()
     aangemaaktop = models.DateTimeField(auto_now_add=False)
@@ -460,7 +462,7 @@ class Stemming(models.Model):
     ]
 
     id = models.CharField(max_length=36, primary_key=True)
-    besluit = models.ForeignKey(Besluit)
+    besluit = models.ForeignKey(Besluit, related_name='stemmingen')
     soort = models.CharField(max_length=20, choices=SOORT)
     fractiegrootte = models.IntegerField()
     fractiestemmen = models.IntegerField()
