@@ -82,7 +82,7 @@ class Activiteit(models.Model):
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
     voortzetting = models.ManyToManyField('self', symmetrical=False, related_name="voortzetting_van")
     documenten = models.ManyToManyField('Document')
-    reservering = models.ManyToManyField('Reservering')  # niet in tsv
+    reserveringen = models.ManyToManyField('Reservering')
 
     def __unicode__(self):
         return self.onderwerp
@@ -120,7 +120,8 @@ class ActiviteitActor(models.Model):
 class Agendapunt(models.Model):
     id = models.CharField(max_length=36, primary_key=True)
     nummer = models.CharField(max_length=10)
-    activiteit = models.ForeignKey(Activiteit)
+    activiteit = models.ForeignKey(Activiteit, null=True, blank=True, related_name='agendapunten')
+    #zaak = models.ForeignKey('Zaak', null=True, blank=True, related_name='agendapunten')
     onderwerp = models.TextField()
     aanvangstijd = models.DateTimeField(null=True, blank=True)
     eindtijd = models.DateTimeField(null=True, blank=True)
@@ -131,8 +132,8 @@ class Agendapunt(models.Model):
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
 
-    besluiten = models.ManyToManyField('Besluit')  # niet in tsv
-    documenten = models.ManyToManyField('Document')  # niet in tsv
+    besluiten = models.ManyToManyField('Besluit')
+    documenten = models.ManyToManyField('Document')
 
     def __unicode__(self):
         return self.onderwerp
@@ -197,7 +198,7 @@ class Document(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True)
     documentnummer = models.CharField(max_length=10)
-    kamerstukdossier = models.ForeignKey(Kamerstukdossier, null=True, blank=True)  # Mist in tsv
+    kamerstukdossier = models.ForeignKey(Kamerstukdossier, null=True, blank=True)
     titel = models.TextField(null=True, blank=True)
     soort = models.CharField(max_length=100, null=True)
     onderwerp = models.TextField()
@@ -215,8 +216,8 @@ class Document(models.Model):
     kenmerkafzender = models.CharField(max_length=20, null=True, blank=True)
     contenttype = models.CharField(max_length=30, null=True, blank=True)
 
-    bijlagen = models.ManyToManyField('self', symmetrical=False, related_name="bijlage_van")  #Niet in tsv
-    vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")  #Niet in tsv
+    bijlagen = models.ManyToManyField('self', symmetrical=False, related_name="bijlage_van")  # Niet in tsv
+    vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")  # Niet in tsv
 
     def __unicode__(self):
         return self.documentnummer
@@ -228,17 +229,19 @@ class Document(models.Model):
 #Niet in tsv
 class Zaal(models.Model):
     syscode = models.IntegerField(primary_key=True)
-    code = models.CharField(max_length=10)
+    code = models.CharField(max_length=10, null=True, blank=True)
     naam = models.CharField(max_length=100)
-    objectcode = models.CharField(max_length=10)
-    objectnaam = models.CharField(max_length=100)
-    soort = models.CharField(max_length=100)
-    aantaldeelnemers = models.IntegerField()
-    publieksplekken = models.IntegerField()
-    toelichting = models.TextField()
-    vergaderingcode = models.CharField(max_length=10)
-    vergaderingnaam = models.CharField(max_length=100)
-    mogelijkheidcatering = models.IntegerField()
+    objectcode = models.CharField(max_length=10, null=True, blank=True)
+    objectnaam = models.CharField(max_length=100, null=True, blank=True)
+    soort = models.CharField(max_length=100, null=True, blank=True)
+    aantaldeelnemers = models.IntegerField(null=True, blank=True)
+    publieksplekken = models.IntegerField(null=True, blank=True)
+    toelichting = models.TextField(null=True, blank=True)
+    vergaderingcode = models.CharField(max_length=10, null=True, blank=True)
+    vergaderingnaam = models.CharField(max_length=100, null=True, blank=True)
+    mogelijkheidcatering = models.NullBooleanField()
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
 
     def __unicode__(self):
         return self.naam
@@ -247,39 +250,40 @@ class Zaal(models.Model):
         verbose_name_plural = u"Zalen"
 
 
-# Niet in tsv
 class Reservering(models.Model):
     syscode = models.IntegerField(primary_key=True)
-    nummer = models.CharField(max_length=100)
-    standaardcode = models.CharField(max_length=100)
-    standaardnaam = models.CharField(max_length=100)
-    vergadersoortcode = models.CharField(max_length=100)
-    vergadersoortnaam = models.CharField(max_length=100)
-    startdatumtijd = models.DateTimeField()
-    einddatumtijd = models.DateTimeField()
-    omschrijving = models.CharField(max_length=100)
-    meldercode = models.CharField(max_length=100)
-    meldernaam = models.CharField(max_length=100)
-    griffiercode = models.CharField(max_length=100)
-    griffiernaam = models.CharField(max_length=100)
-    voortouwcommissiecode = models.CharField(max_length=100)
-    voortouwcommissienaam = models.CharField(max_length=100)
-    initiatorcode = models.CharField(max_length=100)
-    initiatornaam = models.CharField(max_length=100)
-    toelichtingen = models.CharField(max_length=100)
-    aanmakercode = models.CharField(max_length=100)
-    aanmakernaam = models.CharField(max_length=100)
-    aantalpersonen = models.IntegerField()
-    aanvragercode = models.CharField(max_length=100)
-    aanvragernaam = models.CharField(max_length=100)
-    datumgemeld = models.DateTimeField()
-    statuscode = models.CharField(max_length=100)
-    statusnaam = models.CharField(max_length=100)
-    activiteitsoortcode = models.CharField(max_length=100)
-    activiteitsoortnaam = models.CharField(max_length=100)
-    toelichting = models.CharField(max_length=100)
-    catering = models.IntegerField()
+    nummer = models.IntegerField()
+    standaardcode = models.CharField(max_length=100, null=True, blank=True)
+    standaardnaam = models.CharField(max_length=100, null=True, blank=True)
+    vergadersoortcode = models.CharField(max_length=100, null=True, blank=True)
+    vergadersoortnaam = models.CharField(max_length=100, null=True, blank=True)
+    startdatumtijd = models.DateTimeField(null=True, blank=True)
+    einddatumtijd = models.DateTimeField(null=True, blank=True)
+    omschrijving = models.CharField(max_length=100, null=True, blank=True)
+    meldercode = models.CharField(max_length=100, null=True, blank=True)
+    meldernaam = models.CharField(max_length=100, null=True, blank=True)
+    griffiercode = models.CharField(max_length=100, null=True, blank=True)
+    griffiernaam = models.CharField(max_length=100, null=True, blank=True)
+    voortouwcommissiecode = models.CharField(max_length=100, null=True, blank=True)
+    voortouwcommissienaam = models.CharField(max_length=100, null=True, blank=True)
+    initiatorcode = models.CharField(max_length=100, null=True, blank=True)
+    initiatornaam = models.CharField(max_length=100, null=True, blank=True)
+    toelichtingen = models.CharField(max_length=100, null=True, blank=True)
+    aanmakercode = models.CharField(max_length=100, null=True, blank=True)
+    aanmakernaam = models.CharField(max_length=100, null=True, blank=True)
+    aantalpersonen = models.IntegerField(null=True, blank=True)
+    aanvragercode = models.CharField(max_length=100, null=True, blank=True)
+    aanvragernaam = models.CharField(max_length=100, null=True, blank=True)
+    datumgemeld = models.DateTimeField(null=True, blank=True)
+    statuscode = models.CharField(max_length=100, null=True, blank=True)
+    statusnaam = models.CharField(max_length=100, null=True, blank=True)
+    activiteitsoortcode = models.CharField(max_length=100, null=True, blank=True)
+    activiteitsoortnaam = models.CharField(max_length=100, null=True, blank=True)
+    toelichting = models.CharField(max_length=100, null=True, blank=True)
+    catering = models.IntegerField(null=True, blank=True)
     activiteitnummer = models.CharField(max_length=10)
+    aangemaaktop = models.DateTimeField(auto_now_add=False)
+    gewijzigdop = models.DateTimeField(auto_now=False)
     zaalsyscode = models.ForeignKey(Zaal)
 
     def __unicode__(self):
@@ -439,8 +443,8 @@ class Status(models.Model):
     ]
 
     id = models.CharField(max_length=36, primary_key=True)
-    zaak = models.ForeignKey(Zaak, related_name="status2")
-    besluit = models.ForeignKey(Besluit, related_name='status2', null=True, blank=True)  # niet in tsv
+    zaak = models.ForeignKey(Zaak, related_name="status2", null=True, blank=True)
+    besluit = models.ForeignKey(Besluit, related_name='status2', null=True, blank=True)
     soort = models.CharField(max_length=100)
     datum = models.DateTimeField()
     aangemaaktop = models.DateTimeField(auto_now_add=False)
@@ -464,7 +468,7 @@ class Stemming(models.Model):
     besluit = models.ForeignKey(Besluit)
     soort = models.CharField(max_length=20, choices=SOORT)
     fractiegrootte = models.IntegerField()
-    fractiestemmen = models.IntegerField()
+    fractiestemmen = models.IntegerField(null=True, blank=True)  # niet in tsv
     actornaam = models.CharField(max_length=50)
     actorpartij = models.CharField(max_length=20)
     vergissing = models.NullBooleanField()

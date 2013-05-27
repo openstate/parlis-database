@@ -1,5 +1,6 @@
 import os
 import codecs
+from pprint import pprint
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -17,9 +18,19 @@ class Command(BaseCommand):
         for filename in os.listdir(args[0]):
             with codecs.open(os.path.join(args[0], filename), 'r', "utf-8") as file:
                 try:
+                    data = file.read().decode('utf-8').strip()
+                except Exception as e:
+                    print e
+                    print filename
+                    raise
+
+                try:
                     DocumentContent(
                         document_id=filename[:-4],
-                        content=file.read()
+                        content=data
                     ).save()
-                except:
-                    print file.read()
+                except Exception as e:
+                    print e
+                    pprint(filename[:-4])
+                    pprint(data[:140])
+

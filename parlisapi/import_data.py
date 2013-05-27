@@ -9,38 +9,43 @@ from dateutil import parser
 from .dictdiffer import DictDiffer
 
 from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, \
-                        Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor
+    Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor, Zaal, Reservering
 
 
 def tsv_import(folder):
 
     #order is important
     klasses = [
-        Zaken,
-        ZakenVervanging,
-        ZakenOverig,
-        ZakenZieOok,
-        Activiteiten,
-        ActiviteitenVervangen,
-        ActiviteitenVoortgezet,
-        Besluiten,
-        Documenten,
-        Agendapunten,
-        Stemmingen,
-        ZakenRelatieKamerstukDossier,
-        ZakenActiviteiten,
-        ZakenBesluiten,
-        ZakenDocumenten,
-        ZakenStatussen,
-        ZakenActoren,
-        ZakenVervanging2,
-        ZakenOverig2,
-        ZakenZieOok2,
-        ActiviteitenDocumenten,
-        ActiviteitenZaken,
-        ActiviteitenVervangen2,
-        ActiviteitenVoortgezet2,
-        ActiviteitenActoren,
+#        Zaken,
+#        Zalen,
+#        Reserveringen,
+#        ZakenVervanging,
+#        ZakenOverig,
+#        ZakenZieOok,
+#        Activiteiten,
+#        ActiviteitenVervangen,
+#        ActiviteitenVoortgezet,
+#        Besluiten,
+#        Documenten,
+#        Agendapunten,
+#        Agendapunten2,
+#        Stemmingen,
+#        ZakenRelatieKamerstukDossier,
+#        ZakenActiviteiten,
+#        ZakenBesluiten,
+#        ZakenDocumenten,
+#        ZakenStatussen,
+#        ZakenActoren,
+#        ZakenVervanging2,
+#        ZakenOverig2,
+#        ZakenZieOok2,
+#        ActiviteitenDocumenten,
+#        ActiviteitenZaken,
+#        ActiviteitenVervangen2,
+#        ActiviteitenVoortgezet2,
+#        ActiviteitenActoren,
+#        BesluitenStatussen,
+        DocumentenKamerstukDossier,
     ]
 
     for klass in klasses:
@@ -116,7 +121,7 @@ class TsvImport(object):
         #always the case
         if self.primary_key:
             try:
-                instance, created = self.model.objects.get_or_create(id=row[self.primary_key], defaults=row)
+                instance, created = self.model.objects.get_or_create(pk=row[self.primary_key], defaults=row)
             except Exception as e:
                 print e
                 print row
@@ -127,13 +132,7 @@ class TsvImport(object):
 
                 #check for strange stuff
                 if not created:
-                    d = DictDiffer(self.model.objects.filter(id=instance.id).values()[0], row)
-                    print row[self.primary_key]
-                    if d.added():
-                        print "Added:", d.added()
-
-                    if d.removed():
-                        print "Removed:", d.removed()
+                    d = DictDiffer(row, self.model.objects.filter(pk=getattr(instance,self.primary_key)).values()[0])
 
                     def make_list_value(value):
                         # Do some conversions explicit to reduce false positives
@@ -158,7 +157,8 @@ class TsvImport(object):
                             pass
 
                         try:
-                            same = getattr(instance, value).replace(microseconds=0, tzinfo=None) == row[value].replace(microseconds=0, tzinfo=None)
+                            row[value] = row[value] - row[value].utcoffset()
+                            same = getattr(instance, value).replace(microsecond=0, tzinfo=None) == row[value].replace(microsecond=0, tzinfo=None)
                         except:
                             pass
 
@@ -167,9 +167,37 @@ class TsvImport(object):
 
                     list = [x for x in map(make_list_value, d.changed()) if x]
 
+                    if d.added() or d.removed() or list:
+                        print row[self.primary_key]
+
+                    if d.added():
+                        print "Added (only in tsv):", d.added()
+
+                        #actualy add the new info
+                        for key in d.added():
+                            setattr(instance, key, row[key])
+
+                        instance.save()
+
+                    if d.removed():
+                        print "Removed (only in db):", d.removed()
+
                     if list:
-                        print "Changed values:"
+                        print "Changed values (tsv, db):"
                         pprint(list)
+
+                        if getattr(instance, 'gewijzigdop') == row['gewijzigdop']:
+                            #actualy add new info if None
+                            for key in d.changed():
+                                if getattr(instance, key) is None:
+                                    setattr(instance, key, row[key])
+                            instance.save()
+                        elif getattr(instance, 'gewijzigdop') < row['gewijzigdop']:
+                            for key in d.changed():
+                                setattr(instance, key, row[key])
+                            instance.save()
+
+
         else:
             instance = self.model()
 
@@ -180,12 +208,10 @@ class TsvImport(object):
 
 
 class SubtreeImport(TsvImport):
-    subfolder = ''
     many_to_many = True
     should_exist = True
-
-#    def __init__(self, folder, data=False):
-#        super(SubtreeImport, self).__init__(os.path.join(folder, self.subfolder), data)
+    related_key = None
+    related_model = None
 
     def handle(self, row):
         related_id = row[self.related_key]
@@ -194,11 +220,11 @@ class SubtreeImport(TsvImport):
         super(SubtreeImport, self).handle(row)
 
         try:
-            related = self.related_model.objects.get(id=related_id)
+            related = self.related_model.objects.get(pk=related_id)
         except:
             print "Missing %s: %s" % (self.related_model._meta.verbose_name.title(), related_id)
         else:
-            self.attach_to(related, row['id'])
+            self.attach_to(related, row[self.primary_key])
             related.save()
 
     def attach_to(self, instance, id):
@@ -209,171 +235,72 @@ class SubtreeImport(TsvImport):
             setattr(instance, self.key + '_id', id)
 
 
+class ZakenRelatie(SubtreeImport):
+    related_key = 'sid_zaak'
+    related_model = Zaak
+
+
+class ActiviteitenRelatie(SubtreeImport):
+    related_key = 'sid_activiteit'
+    related_model = Activiteit
+
+
+class BesluitenRelatie(SubtreeImport):
+    related_key = 'sid_besluit'
+    related_model = Besluit
+
+
+class DocumentenRelatie(SubtreeImport):
+    related_key = 'sid_document'
+    related_model = Document
+
+
+class KamerstukDossiersRelatie(SubtreeImport):
+    related_key = 'sid_kamerstukdossier'
+    related_model = Kamerstukdossier
+
+
+class ReserveringenRelatie(SubtreeImport):
+    related_key = 'sid_reservering'
+    related_model = Reservering
+
+
+class StemmingenRelatie(SubtreeImport):
+    related_key = 'sid_stemming'
+    related_model = Stemming
+
+
 """
 Actual imports
 each class matches a tsv file
 """
 
 
-class Zaken(TsvImport):
-    filename = 'Zaken.tsv'
-    model = Zaak
-
-
-class Activiteiten(TsvImport):
-    filename = 'Activiteiten.tsv'
-    model = Activiteit
-
-
-class Agendapunten(TsvImport):
-    filename = 'Agendapunten.tsv'
-    model = Agendapunt
-
-    def handle(self, row):
-        row['activiteit_id'] = row['sid_activiteit']
-        del row['sid_activiteit']
-        super(Agendapunten, self).handle(row)
-
-
-class Besluiten(TsvImport):
-    filename = 'Besluiten.tsv'
-    model = Besluit
-
-
-class Stemmingen(TsvImport):
-    filename = 'Stemmingen.tsv'
-    model = Stemming
-
-    def handle(self, row):
-        row['besluit_id'] = row['sid_besluit']
-        del row['sid_besluit']
-        super(Stemmingen, self).handle(row)
-
-
-class Documenten(TsvImport):
-    filename = 'Documenten.tsv'
-    model = Document
-
-    def handle(self, row):
-        row['aanhangselnummer'] = row['aanhangelnummer']
-        del row['aanhangelnummer']
-        super(Documenten, self).handle(row)
-
-
-class ZakenRelatie(SubtreeImport):
-    subfolder = 'Zaken'
-    related_key = 'sid_zaak'
-    related_model = Zaak
-
-
-class ActiviteitenRelatie(SubtreeImport):
-    subfolder = 'ActiviteitRelaties'
-    related_key = 'sid_activiteit'
-    related_model = Activiteit
-
-
-class ZakenRelatieKamerstukDossier(ZakenRelatie):
-    filename = 'Zaken_KamerstukDossier.tsv'
-    model = Kamerstukdossier
-    key = 'kamerstukdossier'
+class ActiviteitenActoren(ActiviteitenRelatie):
+    filename = 'Activiteiten_ActiviteitActoren.tsv'
+    model = ActiviteitActor
+    key = 'activiteit'
     many_to_many = False
-    should_exist = False
 
 
-class ZakenActiviteiten(ZakenRelatie):
-    filename = 'Zaken_Activiteiten.tsv'
-    model = Activiteit
-    key = 'activiteiten'
-    many_to_many = True
-
-
-class ZakenBesluiten(ZakenRelatie):
-    filename = 'Zaken_Besluiten.tsv'
-    model = Besluit
-    key = 'besluiten'
-    many_to_many = True
-
-
-class ZakenDocumenten(ZakenRelatie):
-    filename = 'Zaken_Documenten.tsv'
-    model = Document
-    key = 'documenten'
-    many_to_many = True
-
-
-class ZakenVervanging(ZakenRelatie):
-    filename = 'Zaken_VervangenVanuit.tsv'
-    model = Zaak
-    key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
-
-
-class ZakenVervanging2(ZakenRelatie):
-    filename = 'Zaken_VervangenDoor.tsv'
-    model = Zaak
-    key = 'vervanger'
-    many_to_many = True
-
-
-class ZakenOverig(ZakenRelatie):
-    filename = 'Zaken_HoofdOverig.tsv'
-    model = Zaak
-    key = 'overig'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
-
-
-class ZakenOverig2(ZakenRelatie):
-    filename = 'Zaken_GerelateerdOverig.tsv'
-    model = Zaak
-    key = 'overig2'
-    many_to_many = True
-
-
-class ZakenZieOok(ZakenRelatie):
-    filename = 'Zaken_GerelateerdNaar.tsv'
-    model = Zaak
-    key = 'zieook'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
-
-
-class ZakenZieOok2(ZakenRelatie):
-    filename = 'Zaken_GerelateerdVanuit.tsv'
-    model = Zaak
-    key = 'zieook2'
-    many_to_many = True
-
-
-class ZakenStatussen(TsvImport):
-    filename = 'Zaken_Statussen.tsv'
-    model = Status
-
-    def handle(self, row):
-        row['zaak_id'] = row['sid_zaak']
-        del row['sid_zaak']
-        super(ZakenStatussen, self).handle(row)
-
-
-class ZakenActoren(TsvImport):
-    filename = 'Zaken_ZaakActoren.tsv'
-    model = ZaakActor
-
-    def handle(self, row):
-        row['zaak_id'] = row['sid_zaak']
-        del row['sid_zaak']
-        super(ZakenActoren, self).handle(row)
-
-
-class ActiviteitenZaken(ActiviteitenRelatie):
-    filename = 'Activiteiten_Zaken.tsv'
-    model = Zaak
-    key = 'zaken'
-    many_to_many = True
+class ActiviteitenAgendapunten(ActiviteitenRelatie):
+    filename = 'Activiteiten_Agendapunten.tsv'
+    model = Agendapunt
+    key = 'activiteit'
+    many_to_many = False
 
 
 class ActiviteitenDocumenten(ActiviteitenRelatie):
     filename = 'Activiteiten_Documenten.tsv'
     model = Document
     key = 'documenten'
+    many_to_many = True
+
+
+class ActiviteitenReserveringen(ActiviteitenRelatie):
+    filename = 'Activiteiten_Reserveringen.tsv'
+    model = Reservering
+    key = 'reserveringen'
     many_to_many = True
 
 
@@ -405,11 +332,206 @@ class ActiviteitenVoortgezet2(ActiviteitenRelatie):
     many_to_many = True
 
 
-class ActiviteitenActoren(TsvImport):
-    filename = 'Activiteiten_ActiviteitActoren.tsv'
-    model = ActiviteitActor
+class ActiviteitenZaken(ActiviteitenRelatie):
+    filename = 'Activiteiten_Zaken.tsv'
+    model = Zaak
+    key = 'zaken'
+    many_to_many = True
+
+
+class Activiteiten(TsvImport):
+    filename = 'Activiteiten.tsv'
+    model = Activiteit
+
+
+class BesluitenAgendapunten(BesluitenRelatie):
+    filename = 'Besluiten_Agendapunt.tsv'
+    model = Agendapunt
+    key = 'besluiten'
+    many_to_many = True
+
+
+class BesluitenStatussen(TsvImport):
+    filename = 'Besluiten_Statussen.tsv'
+    model = Status
+    key = 'besluit'
+    many_to_many = False
+
+
+class BesluitenStemmingen(TsvImport):
+    filename = 'Besluiten_Stemmingen.tsv'
+    model = Stemming
+    key = 'besluit'
+    many_to_many = False
+
+
+class BesluitenZaken(BesluitenRelatie):
+    filename = 'Besluiten_Zaken.tsv'
+    model = Status
+    key = 'besluiten'
+    many_to_many = True
+
+
+class Besluiten(TsvImport):
+    filename = 'Besluiten.tsv'
+    model = Besluit
+
+
+class DocumentenKamerstukDossier(DocumentenRelatie):
+    filename = 'Documenten_KamerstukDossier.tsv'
+    model = Kamerstukdossier
+    key = 'kamerstukdossier'
+    many_to_many = False
+
+
+class Documenten(TsvImport):
+    filename = 'Documenten.tsv'
+    model = Document
+
+
+class ReserveringenZaal(ReserveringenRelatie):
+    filename = 'Reserveringen_Zaal.tsv'
+    model = Zaal
+    primary_key = 'syscode'
+    key = 'reservering'
+    many_to_many = False
 
     def handle(self, row):
-        row['activiteit_id'] = row['sid_activiteit']
-        del row['sid_activiteit']
-        super(ActiviteitenActoren, self).handle(row)
+        row['sid_reservering'] = row['sid_reservering'][:-1]
+        super(ReserveringenZaal, self).handle(row)
+
+
+class Reserveringen(TsvImport):
+    filename = 'Reserveringen.tsv'
+    model = Reservering
+    primary_key = 'syscode'
+
+
+class StemmingenBesluit(StemmingenRelatie):
+    filename = 'Besluiten_Stemmingen.tsv'
+    model = Stemming
+    key = 'besluit'
+    many_to_many = False
+
+
+class Stemmingen(TsvImport):
+    filename = 'Stemmingen.tsv'
+    model = Stemming
+
+
+class ZakenActiviteiten(ZakenRelatie):
+    filename = 'Zaken_Activiteiten.tsv'
+    model = Activiteit
+    key = 'activiteiten'
+    many_to_many = True
+
+
+class ZakenAgendapunten(ZakenRelatie):
+    """Maybe not needed"""
+    filename = 'Zaken_Agendapunten.tsv'
+    model = Agendapunt
+    key = 'zaak'
+    many_to_many = False
+
+
+class ZakenBesluiten(ZakenRelatie):
+    filename = 'Zaken_Besluiten.tsv'
+    model = Besluit
+    key = 'besluiten'
+    many_to_many = True
+
+
+class ZakenDocumenten(ZakenRelatie):
+    filename = 'Zaken_Documenten.tsv'
+    model = Document
+    key = 'documenten'
+    many_to_many = True
+
+
+class ZakenZieOok(ZakenRelatie):
+    filename = 'Zaken_GerelateerdNaar.tsv'
+    model = Zaak
+    key = 'zieook'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ZakenOverig2(ZakenRelatie):
+    filename = 'Zaken_GerelateerdOverig.tsv'
+    model = Zaak
+    key = 'overig2'
+    many_to_many = True
+
+
+class ZakenZieOok2(ZakenRelatie):
+    filename = 'Zaken_GerelateerdVanuit.tsv'
+    model = Zaak
+    key = 'zieook2'
+    many_to_many = True
+
+
+class ZakenOverig(ZakenRelatie):
+    filename = 'Zaken_HoofdOverig.tsv'
+    model = Zaak
+    key = 'overig'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ZakenKamerstukDossier(ZakenRelatie):
+    filename = 'Zaken_KamerstukDossier.tsv'
+    model = Kamerstukdossier
+    key = 'kamerstukdossier'
+    many_to_many = False
+    should_exist = False
+
+
+class ZakenStatussen(ZakenRelatie):
+    filename = 'Zaken_Statussen.tsv'
+    model = Status
+    key = 'zaak'
+    many_to_many = False
+
+
+class ZakenVervanging2(ZakenRelatie):
+    filename = 'Zaken_VervangenDoor.tsv'
+    model = Zaak
+    key = 'vervanger'
+    many_to_many = True
+
+
+class ZakenVervanging(ZakenRelatie):
+    filename = 'Zaken_VervangenVanuit.tsv'
+    model = Zaak
+    key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
+    many_to_many = True
+
+
+class ZakenActoren(ZakenRelatie):
+    filename = 'Zaken_ZaakActoren.tsv'
+    model = ZaakActor
+    key = 'zaak'
+    many_to_many = False
+
+
+class Zaken(TsvImport):
+    filename = 'Zaken.tsv'
+    model = Zaak
+
+
+class ZalenReserveringen(TsvImport):
+    filename = 'Zalen_Reserveringen.tsv'
+    model = Reservering
+    primary_key = 'syscode'
+
+    def handle(self, row):
+        if row['nummer'][-3:] != '.00':
+            print "Losing data!"
+        row['nummer'] = row['nummer'][:-3]
+        row['zaalsyscode_id'] = row['sid_zaal'][:-1]
+        del row['sid_zaal']
+        super(Reserveringen, self).handle(row)
+
+
+class Zalen(TsvImport):
+    filename = 'Zalen.tsv'
+    model = Zaal
+    primary_key = 'syscode'
