@@ -8,44 +8,87 @@ from dateutil import parser
 
 from .dictdiffer import DictDiffer
 
+from django.db.models import ManyToManyField
+from django.db.models.fields import FieldDoesNotExist
+
 from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, \
-    Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor, Zaal, Reservering
+    Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor, Zaal, Reservering, \
+    Documentactor, Documentversie
 
 
 def tsv_import(folder):
 
     #order is important
     klasses = [
-#        Zaken,
-#        Zalen,
-#        Reserveringen,
-#        ZakenVervanging,
-#        ZakenOverig,
-#        ZakenZieOok,
-#        Activiteiten,
-#        ActiviteitenVervangen,
-#        ActiviteitenVoortgezet,
-#        Besluiten,
-#        Documenten,
-#        Agendapunten,
-#        Agendapunten2,
-#        Stemmingen,
-#        ZakenRelatieKamerstukDossier,
-#        ZakenActiviteiten,
-#        ZakenBesluiten,
-#        ZakenDocumenten,
-#        ZakenStatussen,
-#        ZakenActoren,
-#        ZakenVervanging2,
-#        ZakenOverig2,
-#        ZakenZieOok2,
-#        ActiviteitenDocumenten,
-#        ActiviteitenZaken,
-#        ActiviteitenVervangen2,
-#        ActiviteitenVoortgezet2,
-#        ActiviteitenActoren,
-#        BesluitenStatussen,
-        DocumentenKamerstukDossier,
+     #   Activiteiten,
+     #   Besluiten,
+     #   Kamerstukdossiers,
+     #   Documenten,
+     #   Zalen,  # Before Reserveringen
+     #   Zaken,
+     ##   Reserveringen, # skip this we need one with foreign keys to Zaal
+     #   ZaalReserveringen,
+     ##   Stemmingen,  # skip this we need one with foreign keys to Besluit
+     #   BesluitStemmingen,
+
+
+        # Relations on self
+     #   ZakenVervanging,
+     #   ZakenOverig,
+     #   ZakenZieOok2,  # This needs to come before ZakenZieOok
+     #   ZakenZieOok,  # Other way around has some extra data
+     #   ZakenVervanging2,  # Other way around has some extra data
+     #   ZakenOverig2,  # Other way around has some extra data
+     #   ActiviteitenVervangen,
+     #   ActiviteitenVoortgezet,
+     #   ActiviteitenVervangen2,  # Other way around has some extra data
+     #   ActiviteitenVoortgezet2,  # Other way around has some extra data
+     #   DocumentenBronnen,  # has to be before DocumentenBijlagen
+     #   DocumentenBijlagen,
+
+        #ForeignKeys which can be null
+     #   ZakenKamerstukDossier,
+     #   KamerstukdossierZaken,
+     #   KamerstukdossierDocumenten,  # Before DocumentenKamerstukDossier
+     #   DocumentenKamerstukDossier,
+
+        #many to many
+        #ActiviteitenReserveringen,  # before ReserveringenActiviteiten
+        #ReserveringenActiviteiten,
+        #DocumentenActiviteiten,
+        #ActiviteitenDocumenten,
+        #DocumentenZaken,
+        #ZakenDocumenten,
+        #ZakenActiviteiten,
+        #ActiviteitenZaken,
+        #ZakenBesluiten,
+        BesluitenZaken,
+
+        #Agendapunt relations
+     #   ActiviteitenAgendapunt,
+     #   BesluitenAgendapunten,
+     #   DocumentenAgendapunten,
+     #   ZakenAgendapunten,  # this relation is not in accessdb
+
+        #Statussen relations
+     #   ZaakStatussen,
+     #   BesluitStatussen,
+
+        #New Tables
+     #   DocumentActoren,
+     #   DocumentVersies,
+     #   ZaakActoren,
+     #   ActiviteitActoren,
+
+
+
+
+        StemmingenBesluit,
+        Stemmingen,
+
+
+        ReserveringenZaal,
+        Reserveringen,
     ]
 
     for klass in klasses:
@@ -61,6 +104,8 @@ class TsvImport(object):
     should_exist = False
 
     def __init__(self, folder='', data=False):
+        print "Importing %s" % self.filename
+
         if data:
             self.data = data
 
@@ -125,13 +170,14 @@ class TsvImport(object):
             except Exception as e:
                 print e
                 print row
+                raise e
             else:
                 if self.should_exist and created:
                     print "Unexpected new data:"
                     print row
 
                 #check for strange stuff
-                if not created:
+                if False and not created:
                     d = DictDiffer(row, self.model.objects.filter(pk=getattr(instance,self.primary_key)).values()[0])
 
                     def make_list_value(value):
@@ -208,65 +254,97 @@ class TsvImport(object):
 
 
 class SubtreeImport(TsvImport):
-    many_to_many = True
+    many_to_many = False
     should_exist = True
-    related_key = None
+    related_tsv_key = None
     related_model = None
+    key_in_self = False
+    key_in_self = False
+
+    def __init__(self, *args, **kwargs):
+        super(SubtreeImport, self).__init__(*args, **kwargs)
+
+        #set key_in_self from related_model verbose_name if not set
+        if not self.key_in_self:
+            self.key_in_self = self.related_model._meta.verbose_name
+
+        #check key_in_self (strip '_id' in check)
+        if not self.key_in_self in self.model._meta.get_all_field_names():
+            raise FieldDoesNotExist(self.key_in_self)
+
+        #set related_tsv_key from related_model verbose_name if not set
+        if not self.related_tsv_key:
+            self.related_tsv_key = 'sid_' + self.related_model._meta.verbose_name
+
+        #determine many_to_many from field
+        try:
+            self.many_to_many = self.model._meta.get_field(self.key_in_self).__class__ == ManyToManyField
+        except FieldDoesNotExist:
+            # no field found so must be a related manager. Which we treat the same as many to many
+            self.many_to_many = True
 
     def handle(self, row):
-        related_id = row[self.related_key]
-        del row[self.related_key]
+        related_id = row[self.related_tsv_key]
+        del row[self.related_tsv_key]
 
-        super(SubtreeImport, self).handle(row)
-
+        #check related_id
+        related = None
         try:
             related = self.related_model.objects.get(pk=related_id)
         except:
-            print "Missing %s: %s" % (self.related_model._meta.verbose_name.title(), related_id)
-        else:
-            self.attach_to(related, row[self.primary_key])
-            related.save()
+            print "Missing %s: %s for relation with %s: %s" % (self.related_model._meta.verbose_name.title(), related_id, self.model._meta.verbose_name.title(), row[self.primary_key])
 
-    def attach_to(self, instance, id):
-        if self.many_to_many:
-            field = getattr(instance, self.key)
-            field.add(id)
-        else:
-            setattr(instance, self.key + '_id', id)
+        #foreignkey to related
+        if not self.many_to_many:
+            row[self.key_in_self + '_id'] = related_id
+
+        super(SubtreeImport, self).handle(row)
+
+        #many to many or foreignkey from related
+        if self.many_to_many and related:
+            instance = self.model.objects.get(pk=row[self.primary_key])
+
+            field = getattr(instance, self.key_in_self)
+            field.add(related)
 
 
 class ZakenRelatie(SubtreeImport):
-    related_key = 'sid_zaak'
+    #related_tsv_key = 'sid_zaak'
     related_model = Zaak
 
 
+class ZalenRelatie(SubtreeImport):
+    #related_tsv_key = 'sid_zaal'
+    related_model = Zaal
+
+
 class ActiviteitenRelatie(SubtreeImport):
-    related_key = 'sid_activiteit'
+    #related_tsv_key = 'sid_activiteit'
     related_model = Activiteit
 
 
 class BesluitenRelatie(SubtreeImport):
-    related_key = 'sid_besluit'
+    #related_tsv_key = 'sid_besluit'
     related_model = Besluit
 
 
 class DocumentenRelatie(SubtreeImport):
-    related_key = 'sid_document'
+    #related_tsv_key = 'sid_document'
     related_model = Document
 
 
 class KamerstukDossiersRelatie(SubtreeImport):
-    related_key = 'sid_kamerstukdossier'
+    #related_tsv_key = 'sid_kamerstukdossier'
     related_model = Kamerstukdossier
 
 
 class ReserveringenRelatie(SubtreeImport):
-    related_key = 'sid_reservering'
+    #related_tsv_key = 'sid_reservering'
     related_model = Reservering
 
 
 class StemmingenRelatie(SubtreeImport):
-    related_key = 'sid_stemming'
+    #related_tsv_key = 'sid_stemming'
     related_model = Stemming
 
 
@@ -276,67 +354,59 @@ each class matches a tsv file
 """
 
 
-class ActiviteitenActoren(ActiviteitenRelatie):
+class ActiviteitActoren(ActiviteitenRelatie):
     filename = 'Activiteiten_ActiviteitActoren.tsv'
     model = ActiviteitActor
-    key = 'activiteit'
-    many_to_many = False
+    should_exist = False
 
 
-class ActiviteitenAgendapunten(ActiviteitenRelatie):
+class ActiviteitenAgendapunt(ActiviteitenRelatie):
     filename = 'Activiteiten_Agendapunten.tsv'
     model = Agendapunt
-    key = 'activiteit'
-    many_to_many = False
+    should_exist = False
 
 
 class ActiviteitenDocumenten(ActiviteitenRelatie):
     filename = 'Activiteiten_Documenten.tsv'
     model = Document
-    key = 'documenten'
-    many_to_many = True
+    key_in_self = 'activiteiten'
 
 
 class ActiviteitenReserveringen(ActiviteitenRelatie):
     filename = 'Activiteiten_Reserveringen.tsv'
     model = Reservering
-    key = 'reserveringen'
-    many_to_many = True
+    key_in_self = 'activiteiten'
+    primary_key = 'syscode'
 
 
 class ActiviteitenVervangen(ActiviteitenRelatie):
     filename = 'Activiteiten_VervangenDoor.tsv'
     model = Activiteit
-    key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
+    key_in_self = 'vervanger'  # This one is in the right direction, related to ZakenOverig2
 
 
 class ActiviteitenVervangen2(ActiviteitenRelatie):
     filename = 'Activiteiten_VervangenVanuit.tsv'
     model = Activiteit
-    key = 'vervanger'
-    many_to_many = True
+    key_in_self = 'vervanging'
 
 
 class ActiviteitenVoortgezet(ActiviteitenRelatie):
     filename = 'Activiteiten_VoortgezetIn.tsv'
     model = Activiteit
-    key = 'voortzetting'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
+    key_in_self = 'voortzetting_van'  # This one is in the right direction, related to ZakenOverig2
 
 
 class ActiviteitenVoortgezet2(ActiviteitenRelatie):
     filename = 'Activiteiten_VoortgezetVanuit.tsv'
     model = Activiteit
-    key = 'voortzetting_van'
-    many_to_many = True
+    key_in_self = 'voortzetting'
 
 
 class ActiviteitenZaken(ActiviteitenRelatie):
     filename = 'Activiteiten_Zaken.tsv'
     model = Zaak
-    key = 'zaken'
-    many_to_many = True
+    key_in_self = 'activiteiten'
 
 
 class Activiteiten(TsvImport):
@@ -347,29 +417,24 @@ class Activiteiten(TsvImport):
 class BesluitenAgendapunten(BesluitenRelatie):
     filename = 'Besluiten_Agendapunt.tsv'
     model = Agendapunt
-    key = 'besluiten'
-    many_to_many = True
+    key_in_self = 'besluiten'
 
 
-class BesluitenStatussen(TsvImport):
+class BesluitStatussen(BesluitenRelatie):
     filename = 'Besluiten_Statussen.tsv'
     model = Status
-    key = 'besluit'
-    many_to_many = False
+    should_exist = False
 
 
-class BesluitenStemmingen(TsvImport):
+class BesluitStemmingen(BesluitenRelatie):
     filename = 'Besluiten_Stemmingen.tsv'
     model = Stemming
-    key = 'besluit'
-    many_to_many = False
 
 
 class BesluitenZaken(BesluitenRelatie):
-    filename = 'Besluiten_Zaken.tsv'
-    model = Status
-    key = 'besluiten'
-    many_to_many = True
+    filename = 'Besluiten_Zaak.tsv'
+    model = Zaak
+    key_in_self = 'besluiten'
 
 
 class Besluiten(TsvImport):
@@ -377,11 +442,52 @@ class Besluiten(TsvImport):
     model = Besluit
 
 
+class DocumentenActiviteiten(DocumentenRelatie):
+    filename = 'Documenten_Activiteiten.tsv'
+    model = Activiteit
+    key_in_self = 'documenten'
+
+
+class DocumentenAgendapunten(DocumentenRelatie):
+    filename = 'Documenten_Agendapunten.tsv'
+    model = Agendapunt
+    key_in_self = 'documenten'
+
+
+class DocumentenBijlagen(DocumentenRelatie):
+    filename = 'Documenten_BijlageDocumenten.tsv'
+    model = Document
+    key_in_self = 'bijlagen_van'
+
+
+class DocumentenBronnen(DocumentenRelatie):
+    filename = 'Documenten_BronDocumenten.tsv'
+    model = Document
+    key_in_self = 'vervanger'
+
+
+class DocumentActoren(DocumentenRelatie):
+    filename = 'Documenten_DocumentActoren.tsv'
+    model = Documentactor
+    should_exist = False
+
+
+class DocumentVersies(DocumentenRelatie):
+    filename = 'Documenten_DocumentVersies.tsv'
+    model = Documentversie
+    should_exist = False
+
+
 class DocumentenKamerstukDossier(DocumentenRelatie):
     filename = 'Documenten_KamerstukDossier.tsv'
     model = Kamerstukdossier
-    key = 'kamerstukdossier'
-    many_to_many = False
+    key_in_self = 'documenten'
+
+
+class DocumentenZaken(DocumentenRelatie):
+    filename = 'Documenten_Zaken.tsv'
+    model = Zaak
+    key_in_self = 'documenten'
 
 
 class Documenten(TsvImport):
@@ -389,14 +495,40 @@ class Documenten(TsvImport):
     model = Document
 
 
+class Kamerstukdossiers(TsvImport):
+    filename = 'KamerstukDossiers.tsv'
+    model = Kamerstukdossier
+
+
+class KamerstukdossierDocumenten(KamerstukDossiersRelatie):
+    filename = "KamerstukDossiers_Documenten.tsv"
+    model = Document
+
+
+class KamerstukdossierZaken(KamerstukDossiersRelatie):
+    filename = "KamerstukDossiers_Zaken.tsv"
+    model = Zaak
+
+
+class ReserveringenActiviteiten(ReserveringenRelatie):
+    filename = 'Reserveringen_Activiteiten.tsv'
+    model = Activiteit
+    key_in_self = 'reserveringen'
+
+    def handle(self, row):
+        # remove trailing )
+        row['sid_reservering'] = row['sid_reservering'][:-1]
+        super(ReserveringenActiviteiten, self).handle(row)
+
+
 class ReserveringenZaal(ReserveringenRelatie):
     filename = 'Reserveringen_Zaal.tsv'
     model = Zaal
     primary_key = 'syscode'
-    key = 'reservering'
-    many_to_many = False
+    key_in_self = 'reserveringen'
 
     def handle(self, row):
+        # remove trailing )
         row['sid_reservering'] = row['sid_reservering'][:-1]
         super(ReserveringenZaal, self).handle(row)
 
@@ -407,11 +539,10 @@ class Reserveringen(TsvImport):
     primary_key = 'syscode'
 
 
-class StemmingenBesluit(StemmingenRelatie):
-    filename = 'Besluiten_Stemmingen.tsv'
-    model = Stemming
-    key = 'besluit'
-    many_to_many = False
+class StemmingenBesluit(BesluitenRelatie):
+    filename = 'Stemmingen_Besluit.tsv'
+    model = Besluit
+    key_in_self = 'stemmingen'
 
 
 class Stemmingen(TsvImport):
@@ -422,94 +553,80 @@ class Stemmingen(TsvImport):
 class ZakenActiviteiten(ZakenRelatie):
     filename = 'Zaken_Activiteiten.tsv'
     model = Activiteit
-    key = 'activiteiten'
-    many_to_many = True
+    key_in_self = 'zaken'
 
-
-class ZakenAgendapunten(ZakenRelatie):
-    """Maybe not needed"""
+"""
+Relation does not exist in Accessdb
+class ZakenAgendapunt(ZakenRelatie):
     filename = 'Zaken_Agendapunten.tsv'
     model = Agendapunt
-    key = 'zaak'
-    many_to_many = False
-
+"""
 
 class ZakenBesluiten(ZakenRelatie):
     filename = 'Zaken_Besluiten.tsv'
     model = Besluit
-    key = 'besluiten'
-    many_to_many = True
+    key_in_self = 'zaken'
 
 
 class ZakenDocumenten(ZakenRelatie):
     filename = 'Zaken_Documenten.tsv'
     model = Document
-    key = 'documenten'
-    many_to_many = True
+    key_in_self = 'zaken'
 
 
 class ZakenZieOok(ZakenRelatie):
     filename = 'Zaken_GerelateerdNaar.tsv'
     model = Zaak
-    key = 'zieook'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
+    key_in_self = 'zieook2'  # This one is in the right direction, related to ZakenOverig2
 
 
 class ZakenOverig2(ZakenRelatie):
     filename = 'Zaken_GerelateerdOverig.tsv'
     model = Zaak
-    key = 'overig2'
-    many_to_many = True
+    key_in_self = 'overig'
 
 
 class ZakenZieOok2(ZakenRelatie):
     filename = 'Zaken_GerelateerdVanuit.tsv'
     model = Zaak
-    key = 'zieook2'
-    many_to_many = True
+    key_in_self = 'zieook'
 
 
 class ZakenOverig(ZakenRelatie):
     filename = 'Zaken_HoofdOverig.tsv'
     model = Zaak
-    key = 'overig'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
+    key_in_self = 'overig2'  # This one is in the right direction, related to ZakenOverig2
 
 
 class ZakenKamerstukDossier(ZakenRelatie):
     filename = 'Zaken_KamerstukDossier.tsv'
     model = Kamerstukdossier
-    key = 'kamerstukdossier'
-    many_to_many = False
+    key_in_self = 'zaken'
     should_exist = False
 
 
-class ZakenStatussen(ZakenRelatie):
+class ZaakStatussen(ZakenRelatie):
     filename = 'Zaken_Statussen.tsv'
     model = Status
-    key = 'zaak'
-    many_to_many = False
+    should_exist = False
 
 
 class ZakenVervanging2(ZakenRelatie):
     filename = 'Zaken_VervangenDoor.tsv'
     model = Zaak
-    key = 'vervanger'
-    many_to_many = True
+    key_in_self = 'vervanging'
 
 
 class ZakenVervanging(ZakenRelatie):
     filename = 'Zaken_VervangenVanuit.tsv'
     model = Zaak
-    key = 'vervanging'  # This one is in the right direction, related to ZakenOverig2
-    many_to_many = True
+    key_in_self = 'vervanger'  # This one is in the right direction, related to ZakenOverig2
 
 
-class ZakenActoren(ZakenRelatie):
+class ZaakActoren(ZakenRelatie):
     filename = 'Zaken_ZaakActoren.tsv'
     model = ZaakActor
-    key = 'zaak'
-    many_to_many = False
+    should_exist = False
 
 
 class Zaken(TsvImport):
@@ -517,18 +634,16 @@ class Zaken(TsvImport):
     model = Zaak
 
 
-class ZalenReserveringen(TsvImport):
+class ZaalReserveringen(ZalenRelatie):
+    """Should be the same as Zalen with zaalsyscode_id filled"""
     filename = 'Zalen_Reserveringen.tsv'
     model = Reservering
     primary_key = 'syscode'
 
     def handle(self, row):
-        if row['nummer'][-3:] != '.00':
-            print "Losing data!"
-        row['nummer'] = row['nummer'][:-3]
-        row['zaalsyscode_id'] = row['sid_zaal'][:-1]
-        del row['sid_zaal']
-        super(Reserveringen, self).handle(row)
+        # remove trailing )
+        row['sid_zaal'] = row['sid_zaal'][:-1]
+        super(ZaalReserveringen, self).handle(row)
 
 
 class Zalen(TsvImport):
