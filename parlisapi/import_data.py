@@ -20,69 +20,68 @@ def tsv_import(folder):
 
     #order is important
     klasses = [
-     #   Activiteiten,
-     #   Besluiten,
-     #   Kamerstukdossiers,
-     #   Documenten,
-     #   Zalen,  # Before Reserveringen
-     #   Zaken,
-     ##   Reserveringen, # skip this we need one with foreign keys to Zaal
-     #   ZaalReserveringen,
-     ##   Stemmingen,  # skip this we need one with foreign keys to Besluit
-     #   BesluitStemmingen,
+        Activiteiten,
+        Besluiten,
+        Kamerstukdossiers,
+        Documenten,
+        Zalen,  # Before Reserveringen
+        Zaken,
+        #Reserveringen, # skip this we need one with foreign keys to Zaal
+        ZaalReserveringen,
+        #Stemmingen,  # skip this we need one with foreign keys to Besluit
+        BesluitStemmingen,
 
 
         # Relations on self
-     #   ZakenVervanging,
-     #   ZakenOverig,
-     #   ZakenZieOok2,  # This needs to come before ZakenZieOok
-     #   ZakenZieOok,  # Other way around has some extra data
-     #   ZakenVervanging2,  # Other way around has some extra data
-     #   ZakenOverig2,  # Other way around has some extra data
-     #   ActiviteitenVervangen,
-     #   ActiviteitenVoortgezet,
-     #   ActiviteitenVervangen2,  # Other way around has some extra data
-     #   ActiviteitenVoortgezet2,  # Other way around has some extra data
-     #   DocumentenBronnen,  # has to be before DocumentenBijlagen
-     #   DocumentenBijlagen,
+        ZakenVervanging,
+        ZakenOverig,
+        ZakenZieOok2,  # This needs to come before ZakenZieOok
+        ZakenZieOok,  # Other way around has some extra data
+        ZakenVervanging2,  # Other way around has some extra data
+        ZakenOverig2,  # Other way around has some extra data
+        ActiviteitenVervangen,
+        ActiviteitenVoortgezet,
+        ActiviteitenVervangen2,  # Other way around has some extra data
+        ActiviteitenVoortgezet2,  # Other way around has some extra data
+        DocumentenBronnen,  # has to be before DocumentenBijlagen
+        DocumentenBijlagen,
 
         #ForeignKeys which can be null
-     #   ZakenKamerstukDossier,
-     #   KamerstukdossierZaken,
-     #   KamerstukdossierDocumenten,  # Before DocumentenKamerstukDossier
-     #   DocumentenKamerstukDossier,
+        ZakenKamerstukDossier,
+        KamerstukdossierZaken,
+        KamerstukdossierDocumenten,  # Before DocumentenKamerstukDossier
+        DocumentenKamerstukDossier,
 
         #many to many
-        #ActiviteitenReserveringen,  # before ReserveringenActiviteiten
-        #ReserveringenActiviteiten,
-        #DocumentenActiviteiten,
-        #ActiviteitenDocumenten,
-        #DocumentenZaken,
-        #ZakenDocumenten,
-        #ZakenActiviteiten,
-        #ActiviteitenZaken,
-        #ZakenBesluiten,
+        ActiviteitenReserveringen,  # before ReserveringenActiviteiten
+        ReserveringenActiviteiten,
+        DocumentenActiviteiten,
+        ActiviteitenDocumenten,
+        DocumentenZaken,
+        ZakenDocumenten,
+        ZakenActiviteiten,
+        ActiviteitenZaken,
+        ZakenBesluiten,
         BesluitenZaken,
 
         #Agendapunt relations
-     #   ActiviteitenAgendapunt,
-     #   BesluitenAgendapunten,
-     #   DocumentenAgendapunten,
-     #   ZakenAgendapunten,  # this relation is not in accessdb
+        ActiviteitenAgendapunt,
+        BesluitenAgendapunten,
+        DocumentenAgendapunten,
+        ZakenAgendapunten,  # this relation is not in accessdb
 
         #Statussen relations
-     #   ZaakStatussen,
-     #   BesluitStatussen,
+        ZaakStatussen,
+        BesluitStatussen,
 
         #New Tables
-     #   DocumentActoren,
-     #   DocumentVersies,
-     #   ZaakActoren,
-     #   ActiviteitActoren,
+        DocumentActoren,
+        DocumentVersies,
+        ZaakActoren,
+        ActiviteitActoren,
 
 
-
-
+        #not realy neccesary
         StemmingenBesluit,
         Stemmingen,
 
@@ -174,6 +173,9 @@ class TsvImport(object):
             else:
                 if self.should_exist and created:
                     print "Unexpected new data:"
+                    print row
+                elif not self.should_exist and not created:
+                    print "Unexpected old data:"
                     print row
 
                 #check for strange stuff
@@ -314,37 +316,30 @@ class ZakenRelatie(SubtreeImport):
 
 
 class ZalenRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_zaal'
     related_model = Zaal
 
 
 class ActiviteitenRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_activiteit'
     related_model = Activiteit
 
 
 class BesluitenRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_besluit'
     related_model = Besluit
 
 
 class DocumentenRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_document'
     related_model = Document
 
 
 class KamerstukDossiersRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_kamerstukdossier'
     related_model = Kamerstukdossier
 
 
 class ReserveringenRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_reservering'
     related_model = Reservering
 
 
 class StemmingenRelatie(SubtreeImport):
-    #related_tsv_key = 'sid_stemming'
     related_model = Stemming
 
 
@@ -429,6 +424,7 @@ class BesluitStatussen(BesluitenRelatie):
 class BesluitStemmingen(BesluitenRelatie):
     filename = 'Besluiten_Stemmingen.tsv'
     model = Stemming
+    should_exist = False
 
 
 class BesluitenZaken(BesluitenRelatie):
@@ -539,7 +535,7 @@ class Reserveringen(TsvImport):
     primary_key = 'syscode'
 
 
-class StemmingenBesluit(BesluitenRelatie):
+class StemmingenBesluit(StemmingenRelatie):
     filename = 'Stemmingen_Besluit.tsv'
     model = Besluit
     key_in_self = 'stemmingen'
@@ -555,12 +551,13 @@ class ZakenActiviteiten(ZakenRelatie):
     model = Activiteit
     key_in_self = 'zaken'
 
-"""
-Relation does not exist in Accessdb
-class ZakenAgendapunt(ZakenRelatie):
+
+#Relation does not exist in Accessdb
+class ZakenAgendapunten(ZakenRelatie):
     filename = 'Zaken_Agendapunten.tsv'
     model = Agendapunt
-"""
+    key_in_self = 'zaken'
+
 
 class ZakenBesluiten(ZakenRelatie):
     filename = 'Zaken_Besluiten.tsv'
@@ -639,6 +636,7 @@ class ZaalReserveringen(ZalenRelatie):
     filename = 'Zalen_Reserveringen.tsv'
     model = Reservering
     primary_key = 'syscode'
+    should_exist = False
 
     def handle(self, row):
         # remove trailing )

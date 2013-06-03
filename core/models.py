@@ -121,7 +121,6 @@ class Agendapunt(models.Model):
     id = models.CharField(max_length=36, primary_key=True)
     nummer = models.CharField(max_length=10, unique=True)
     activiteit = models.ForeignKey(Activiteit, null=True, blank=True, related_name='agendapunten')
-    #zaak = models.ForeignKey('Zaak', null=True, blank=True, related_name='agendapunten')
     onderwerp = models.TextField()
     aanvangstijd = models.DateTimeField(null=True, blank=True)
     eindtijd = models.DateTimeField(null=True, blank=True)
@@ -132,8 +131,9 @@ class Agendapunt(models.Model):
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
 
-    besluiten = models.ManyToManyField('Besluit')
-    documenten = models.ManyToManyField('Document')
+    besluiten = models.ManyToManyField('Besluit', related_name='agendapunten')
+    documenten = models.ManyToManyField('Document', related_name='agendapunten')
+    zaken = models.ManyToManyField('Zaak', related_name='agendapunten')
 
     def __unicode__(self):
         return self.onderwerp
@@ -322,7 +322,7 @@ class Reservering(models.Model):
     activiteitnummer = models.CharField(max_length=10)
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
-    zaalsyscode = models.ForeignKey(Zaal)
+    zaal = models.ForeignKey(Zaal, null=True)
 
     def __unicode__(self):
         return "Reservering voor zaal", self.zaal
