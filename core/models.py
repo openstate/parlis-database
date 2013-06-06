@@ -191,9 +191,9 @@ class Kamerstukdossier(models.Model):
 
 class Document(models.Model):
     KAMER = [
-        ('2', '2 Tweede Kamer?'),
-        ('3', '3 Eerste Kamer?'),
-        ('4', '4 Eerste Kamer en Tweede Kamer?'),
+        ('2', 'Tweede Kamer'),
+        ('3', 'Eerste Kamer en Tweede Kamer'),
+        ('4', '4 Verenigde Vergadering?'),
     ]
 
     id = models.CharField(max_length=36, primary_key=True)
@@ -322,10 +322,10 @@ class Reservering(models.Model):
     activiteitnummer = models.CharField(max_length=10)
     aangemaaktop = models.DateTimeField(auto_now_add=False)
     gewijzigdop = models.DateTimeField(auto_now=False)
-    zaal = models.ForeignKey(Zaal, null=True)
+    zaal = models.ForeignKey(Zaal, null=True, related_name='reserveringen')
 
     def __unicode__(self):
-        return "Reservering voor zaal", self.zaal
+        return "Reservering voor zaal: %s" % self.zaal
 
 
 class Zaak(models.Model):
@@ -387,24 +387,13 @@ class Zaak(models.Model):
     vervanging = models.ManyToManyField('self', symmetrical=False, related_name="vervanger")
     besluiten = models.ManyToManyField(Besluit, related_name='zaken')
     activiteiten = models.ManyToManyField(Activiteit, related_name='zaken')
-    documenten = models.ManyToManyField(Document, related_name='zaken')  # , through=ZaakDocumenten <<nog niet nodig
+    documenten = models.ManyToManyField(Document, related_name='zaken')
 
     def __unicode__(self):
         return self.citeertitel if self.citeertitel else self.id
 
     class Meta:
         verbose_name_plural = u"Zaken"
-
-'''
-class ZaakDocumenten(models.Model):
-    ' ''Nog niet nodig omdat startdocument nog niet gevuld wordt' ''
-    zaak = models.ForeignKey(Zaak)
-    document = models.ForeignKey(Document)
-    startdocument = models.IntegerField(null=True, blank=True)  # mist in tsv
-
-    class Meta:
-        db_table = u'core_zaak_documenten'
-'''
 
 
 class ZaakActor(models.Model):

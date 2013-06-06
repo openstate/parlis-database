@@ -10,6 +10,7 @@ from .dictdiffer import DictDiffer
 
 from django.db.models import ManyToManyField
 from django.db.models.fields import FieldDoesNotExist
+from django.forms.models import model_to_dict
 
 from core.models import Zaak, Activiteit, Agendapunt, Besluit, Document, \
     Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor, Zaal, Reservering, \
@@ -26,8 +27,7 @@ def tsv_import(folder):
         Documenten,
         Zalen,  # Before Reserveringen
         Zaken,
-        #Reserveringen, # skip this we need one with foreign keys to Zaal
-        ZaalReserveringen,
+        Reserveringen,
         #Stemmingen,  # skip this we need one with foreign keys to Besluit
         BesluitStemmingen,
 
@@ -51,6 +51,8 @@ def tsv_import(folder):
         KamerstukdossierZaken,
         KamerstukdossierDocumenten,  # Before DocumentenKamerstukDossier
         DocumentenKamerstukDossier,
+        ZaalReserveringen,
+        ReserveringenZaal,
 
         #many to many
         ActiviteitenReserveringen,  # before ReserveringenActiviteiten
@@ -84,10 +86,6 @@ def tsv_import(folder):
         #not realy neccesary
         StemmingenBesluit,
         Stemmingen,
-
-
-        ReserveringenZaal,
-        Reserveringen,
     ]
 
     for klass in klasses:
@@ -150,6 +148,10 @@ class TsvImport(object):
 
         #replace empty string with none
         for key, value in row.iteritems():
+
+            if not isinstance(value, str):
+                continue
+
             value = value.decode('utf-8 ')
             row[key] = value
 
@@ -162,98 +164,102 @@ class TsvImport(object):
             if TIMESTAMP.search(value):
                 row[key] = parser.parse(value + ' CET')
 
-        #always the case
-        if self.primary_key:
-            try:
-                instance, created = self.model.objects.get_or_create(pk=row[self.primary_key], defaults=row)
-            except Exception as e:
-                print e
-                print row
-                raise e
-            else:
-                if self.should_exist and created:
-                    print "Unexpected new data:"
-                    print row
-                elif not self.should_exist and not created:
-                    print "Unexpected old data:"
-                    print row
-
-                #check for strange stuff
-                if False and not created:
-                    d = DictDiffer(row, self.model.objects.filter(pk=getattr(instance,self.primary_key)).values()[0])
-
-                    def make_list_value(value):
-                        # Do some conversions explicit to reduce false positives
-                        same = False
-
-                        same = value == 'datum'
-
-                        try:
-                            same = re.sub(r'\s+', ' ', row[value].strip()) == re.sub(r'\s+', ' ', getattr(instance, value))
-                        except:
-                            pass
-
-                        try:
-                            same = int(row[value]) == getattr(instance, value)
-                        except:
-                            pass
-
-                        try:
-                            if getattr(instance, value) == None:
-                                same = row[value].strip() == ''
-                        except:
-                            pass
-
-                        try:
-                            row[value] = row[value] - row[value].utcoffset()
-                            same = getattr(instance, value).replace(microsecond=0, tzinfo=None) == row[value].replace(microsecond=0, tzinfo=None)
-                        except:
-                            pass
-
-                        if not same:
-                            return {value: (row[value], getattr(instance, value))}
-
-                    list = [x for x in map(make_list_value, d.changed()) if x]
-
-                    if d.added() or d.removed() or list:
-                        print row[self.primary_key]
-
-                    if d.added():
-                        print "Added (only in tsv):", d.added()
-
-                        #actualy add the new info
-                        for key in d.added():
-                            setattr(instance, key, row[key])
-
-                        instance.save()
-
-                    if d.removed():
-                        print "Removed (only in db):", d.removed()
-
-                    if list:
-                        print "Changed values (tsv, db):"
-                        pprint(list)
-
-                        if getattr(instance, 'gewijzigdop') == row['gewijzigdop']:
-                            #actualy add new info if None
-                            for key in d.changed():
-                                if getattr(instance, key) is None:
-                                    setattr(instance, key, row[key])
-                            instance.save()
-                        elif getattr(instance, 'gewijzigdop') < row['gewijzigdop']:
-                            for key in d.changed():
-                                setattr(instance, key, row[key])
-                            instance.save()
-
-
+        try:
+            instance, created = self.model.objects.get_or_create(pk=row[self.primary_key], defaults=row)
+        except Exception as e:
+            print e
+            print row
+            raise e
         else:
-            instance = self.model()
+            if self.should_exist and created:
+                print "Unexpected new data:"
+                print row
+            #elif not self.should_exist and not created:
+            #    print "Unexpected old data:"
+            #    print row
 
-            for key in row:
+            #check for strange stuff
+            if not created:
+                self.check_changes(row, instance)
+
+    def check_changes(self, row, instance):
+        d = DictDiffer(row, model_to_dict(instance))
+
+        def compare(x, y):
+            # Do some conversions explicit to reduce false positives
+            same = False
+
+            try:
+                same = x.pk == y.pk
+            except:
+                pass
+
+            try:
+                same = re.sub(r'\s+', ' ', x.strip()) == re.sub(r'\s+', ' ', y)
+            except:
+                pass
+
+            try:
+                same = int(x) == y
+            except:
+                pass
+
+            try:
+                if y == None:
+                    same = x.strip() == ''
+            except:
+                pass
+
+            try:
+                x = x - x.utcoffset()
+                same = y.replace(microsecond=0, tzinfo=None) == x.replace(microsecond=0, tzinfo=None)
+            except:
+                pass
+
+            return same
+
+        def make_list_value(value):
+
+            if value == 'datum':
+                return value
+
+            row_v = row[value]
+            i_v = getattr(instance, value)
+
+            if not compare(row_v, i_v):
+                return {value: (row_v, i_v)}
+
+        list = [x for x in map(make_list_value, d.changed()) if x]
+
+        if d.added() or list: #or d.removed()
+            print row[self.primary_key]
+
+        if d.added():
+            print "Added (only in tsv):", d.added()
+
+            #actualy add the new info
+            for key in d.added():
                 setattr(instance, key, row[key])
 
             instance.save()
 
+        #if d.removed():
+        #    print "Removed (only in db):", d.removed()
+
+        if list:
+            print "Changed values (tsv, db):"
+            pprint(list)
+
+            if getattr(instance, 'gewijzigdop') == row['gewijzigdop']:
+                #actualy add new info if None
+                for key in d.changed():
+                    if getattr(instance, key) is None:
+                        setattr(instance, key, row[key])
+                instance.save()
+            elif getattr(instance, 'gewijzigdop') < row['gewijzigdop']:
+                for key in d.changed():
+                    setattr(instance, key, row[key])
+                instance.save()
 
 class SubtreeImport(TsvImport):
     many_to_many = False
@@ -298,7 +304,7 @@ class SubtreeImport(TsvImport):
 
         #foreignkey to related
         if not self.many_to_many:
-            row[self.key_in_self + '_id'] = related_id
+            row[self.key_in_self] = related
 
         super(SubtreeImport, self).handle(row)
 
