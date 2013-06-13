@@ -123,6 +123,8 @@ INSTALLED_APPS = (
     'parlisapi',
     'core',
     'simpleEV',
+    'actors',
+    'django_extensions',
     'document_contents',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',

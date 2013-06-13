@@ -18,7 +18,7 @@ class Command(BaseCommand):
         for filename in os.listdir(args[0]):
             with codecs.open(os.path.join(args[0], filename), 'r', "utf-8") as file:
                 try:
-                    data = file.read().decode('utf-8').strip()
+                    data = file.read().encode('utf-8').strip()
                 except Exception as e:
                     print e
                     print filename

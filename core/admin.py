@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import Zaak, Activiteit, Agendapunt, Besluit, Document, Stemming, Kamerstukdossier, Status, ActiviteitActor, ZaakActor, Zaal, Reservering, \
-    Documentactor, Documentversie
+    DocumentActor, Documentversie
 from simpleEV.models import DocumentLabels
 
 
@@ -50,7 +50,7 @@ class DocumentLabelsInline(admin.TabularInline):
 
 
 class DocumentActorsInline(admin.TabularInline):
-    model = Documentactor
+    model = DocumentActor
     ordering = ['relatie']
     extra = 0
 
@@ -139,5 +139,5 @@ admin.site.register(ActiviteitActor, ActiviteitActorAdmin)
 admin.site.register(ZaakActor, ZaakActorAdmin)
 admin.site.register(Zaal)#, ZaalAdmin)
 admin.site.register(Reservering)#, ReserveringAdmin)
-admin.site.register(Documentactor)#, DocumentactorAdmin)
+admin.site.register(DocumentActor)#, DocumentActorAdmin)
 admin.site.register(Documentversie)#, DocumentversieAdmin)
